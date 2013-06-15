@@ -11,6 +11,7 @@ var console = require('console');
 var crimedb_common = require('crimedb/common');
 var csv = require('csv');
 var optimist = require('optimist');
+var strptime = require('micro-strptime').strptime;
 var util = require('util');
 
 /*
@@ -32,7 +33,15 @@ var importCSVFile = function(dbHandle, csvPath) {
             /* Construct our object by mapping column names to values */
             o = {};
             for (var i = 0; i < min(rec.length, cols.length); ++i) {
-                o[cols[i]] = rec[i];
+                fieldName = cols[i];
+                fieldValue = rec[i].trim();
+
+                if (fieldName == 'Date Occured') {
+                    o['time_occurred'] = 
+                        (strptime(fieldValue, '%m/%d/%Y %H:%M')).getTime();
+                } else {
+                    o[fieldName] = fieldValue;
+                }
             }
 
             docBatch.push(o);
