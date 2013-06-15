@@ -1,0 +1,94 @@
+#!/bin/env node
+/*
+ * Initialize a CouchDB instance with data from the St. Louis Police Department
+ * via http://www.slmpd.org/Crimereports.shtml.
+ *
+ * XXX: Need to handle errors that don't have reason fields (e.g. those that
+ *      come from somewhere other than CouchDB).
+ */
+
+var console = require('console');
+var crimedb_common = require('crimedb/common');
+var csv = require('csv');
+var optimist = require('optimist');
+var util = require('util');
+
+/*
+ * Import a CSV file into the given database.
+ */
+var importCSVFile = function(dbHandle, csvPath) {
+    var min = function(a, b) { return a > b ? b : a; };
+    var cols = null;
+    var docBatch = [];
+
+    csv().from(csvPath)
+        .on('record', function(rec) {
+            /* Grab the column names from the first record */
+            if (!cols) {
+                cols = rec;
+                return;
+            }
+
+            /* Construct our object by mapping column names to values */
+            o = {};
+            for (var i = 0; i < min(rec.length, cols.length); ++i) {
+                o[cols[i]] = rec[i];
+            }
+
+            docBatch.push(o);
+
+            if (docBatch.length >= 10) {
+                dbHandle.bulkDocs({docs: docBatch}, function(err) {
+                    if (err) {
+                        throw err;
+                    }
+                });
+
+                docBatch = [];
+            }
+        })
+        .on('error', function(err) {
+            util.error(JSON.stringify(err));
+            throw err;
+        });
+};
+
+var opts = optimist.options({
+    help: {
+        alias: 'h',
+        boolean: true,
+        describe: 'show help'},
+    couchdb: {
+        default: 'http://localhost:5984/crimes',
+        describe: 'the CouchDB instance to connect to'},
+    clear: {
+        boolean: true,
+        describe: 'clear the database before importing'}})
+    .usage('\
+usage: $0 <path>\n\
+\n\
+Imports the file at <path> into the CouchDB database.\
+')
+    .wrap(80);
+var args = opts.argv;
+
+if (args.h) {
+    opts.showHelp(console.log);
+    process.exit(0);
+}
+
+if (args._.length < 1) {
+    util.error('missing required <path> argument\n');
+    opts.showHelp();
+    process.exit(1);
+}
+
+crimedb_common.getDB(args.couchdb, true, args.clear, function(err, dbHandle) {
+    if (err) {
+        throw Error(err.reason);
+    }
+
+    importCSVFile(dbHandle, args._[0]);
+});
+
+// vim:filetype=javascript
