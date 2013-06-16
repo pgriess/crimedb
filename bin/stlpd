@@ -17,7 +17,7 @@ var util = require('util');
 /*
  * Import a CSV file into the given database.
  */
-var importCSVFile = function(dbHandle, csvPath) {
+var importCSVFile = function(dbHandle, csvPath, callback) {
     var min = function(a, b) { return a > b ? b : a; };
     var cols = null;
     var docBatch = [];
@@ -49,16 +49,22 @@ var importCSVFile = function(dbHandle, csvPath) {
             if (docBatch.length >= 10) {
                 dbHandle.bulkDocs({docs: docBatch}, function(err) {
                     if (err) {
-                        throw err;
+                        callback(err);
                     }
                 });
 
                 docBatch = [];
             }
-        })
-        .on('error', function(err) {
-            util.error(JSON.stringify(err));
-            throw err;
+        }).on('end', function(count) {
+            if (docBatch.length > 0) {
+                dbHandle.bulkDocs({docs: docBatch}, function(err) {
+                    callback(err);
+                });
+            } else {
+                callback(null);
+            }
+        }).on('error', function(err) {
+            callback(err);
         });
 };
 
@@ -97,7 +103,11 @@ crimedb_common.getDB(args.couchdb, true, args.clear, function(err, dbHandle) {
         throw Error(err.reason);
     }
 
-    importCSVFile(dbHandle, args._[0]);
+    importCSVFile(dbHandle, args._[0], function(err) {
+        if (err) {
+            throw err;
+        }
+    });
 });
 
 // vim:filetype=javascript
