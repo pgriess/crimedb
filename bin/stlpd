@@ -9,6 +9,7 @@
 
 var console = require('console');
 var crimedb_common = require('crimedb/common');
+var crimedb_geo = require('crimedb/geo');
 var csv = require('csv');
 var optimist = require('optimist');
 var strptime = require('micro-strptime').strptime;
@@ -22,6 +23,42 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
     var cols = null;
     var docBatch = [];
 
+    var transformXYCoord = function(doc) {
+        crimedb_geo.spcsToLatLong(
+            2401, doc['X-Coord'], doc['Y-Coord'], 'us-ft',
+            function(err, gjo) {
+                if (err) {
+                    callback(err);
+                    return;
+                }
+
+                doc['location'] = gjo;
+                delete doc['X-Coord'];
+                delete doc['Y-Coord'];
+                delete doc['CAD-Address'];
+                delete doc['CAD-Street'];
+                delete doc['ILEADS-Address'];
+                delete doc['ILEADS-Street'];
+
+                enqueueDoc(doc);
+            }
+        );
+    };
+
+    var enqueueDoc = function(doc) {
+        docBatch.push(doc);
+
+        if (docBatch.length >= 10) {
+            dbHandle.bulkDocs({docs: docBatch}, function(err) {
+                if (err) {
+                    callback(err);
+                }
+            });
+
+            docBatch = [];
+        }
+    };
+
     csv().from(csvPath)
         .on('record', function(rec) {
             /* Grab the column names from the first record */
@@ -31,30 +68,21 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
             }
 
             /* Construct our object by mapping column names to values */
-            o = {};
+            doc = {};
             for (var i = 0; i < min(rec.length, cols.length); ++i) {
-                fieldName = cols[i];
-                fieldValue = rec[i].trim();
-
-                if (fieldName == 'Date Occured') {
-                    o['time_occurred'] = 
-                        (strptime(fieldValue, '%m/%d/%Y %H:%M')).getTime();
-                } else {
-                    o[fieldName] = fieldValue;
-                }
+                doc[cols[i]] = rec[i].trim();
             }
 
-            docBatch.push(o);
+            /*
+             * Perform transformations on our input data to well-kown formats.
+             * Do synchronous transforms first, as it's easier.
+             */
+            doc['time_occurred'] =
+                (strptime(doc['Date Occured'], '%m/%d/%Y %H:%M')).getTime();
+            delete doc['Date Occured'];
 
-            if (docBatch.length >= 10) {
-                dbHandle.bulkDocs({docs: docBatch}, function(err) {
-                    if (err) {
-                        callback(err);
-                    }
-                });
-
-                docBatch = [];
-            }
+            /* Perform asynchronous transformations */
+            transformXYCoord(doc);
         }).on('end', function(count) {
             if (docBatch.length > 0) {
                 dbHandle.bulkDocs({docs: docBatch}, function(err) {
