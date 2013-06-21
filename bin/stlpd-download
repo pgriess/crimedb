@@ -1,0 +1,100 @@
+#!/bin/env node
+/*
+ * Download STLPD crime data from http://www.slmpd.org/Crimereports.shtml.
+ */
+
+var cheerio = require('cheerio');
+var console = require('console');
+var fs = require('fs');
+var request = require('request');
+
+var CRIME_REPORT_URL = 'http://www.slmpd.org/CrimeReport.aspx';
+
+var downloadOne = function(stream, formFields, callback) {
+    request.post({
+        url: CRIME_REPORT_URL,
+        form: formFields,
+        headers: {'Accept': '*/*'}},
+        function(err, resp) {
+            if (!err && resp.statusCode != 200) {
+                err = Error(
+                    'Failed download with HTTP status ' + resp.statusCode);
+            }
+
+            callback(err);
+        }
+    ).pipe(stream);
+};
+
+var downloadMany = function(files, callback) {
+    var fileNames = Object.keys(files);
+    var fileName = fileNames.pop();
+    var formFields = files[fileName];
+    delete files[fileName];
+
+    downloadOne(fs.createWriteStream(fileName), formFields, function(err) {
+        if (err) {
+            callback(err);
+        } else if (fileNames.length == 0) {
+            callback(null);
+        } else {
+            downloadMany(files, callback);
+        }
+    });
+};
+
+request(CRIME_REPORT_URL, function(err, resp) {
+    if (err) {
+        throw err;
+    }
+
+    if (resp.statusCode != 200) {
+        throw Error('Got HTTP response ' + resp.statusCode);
+    }
+
+    /* Template of the form fields that we'll submit with each download request */
+    var formFields = {
+        '__EVENTTARGET': '',
+        '__EVENTARGUMENT': '',
+    };
+
+    $ = cheerio.load(resp.body);
+    $('input[type="hidden"]').each(function(i, e) {
+        formFields[$(e).attr('name')] = $(e).attr('value');
+    });
+
+    /* Map of files to download to their form parameters */
+    var filesToDownload = {};
+
+    $('a').filter(function(i) {
+        var id = $(this).attr('id');
+        if (!id) {
+            return false;
+        }
+
+        return id.match(/^GridView1.*downloadD/) !== null;
+    }).each(function(i, e) {
+        var m = $(e).attr('href').match(/^javascript:__doPostBack\('([^']+)/);
+        if (!m) {
+            return;
+        }
+
+        var fields = {};
+        for (fieldName in formFields) {
+            fields[fieldName] = formFields[fieldName];
+        }
+        fields['__EVENTTARGET'] = m[1];
+
+        filesToDownload[$(e).text()] = fields;
+    });
+
+    downloadMany(filesToDownload, function(err) {
+        if (err) {
+            throw err;
+        }
+
+        console.log('Success!');
+    });
+});
+
+// vim:filetype=javascript
