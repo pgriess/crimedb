@@ -23,24 +23,18 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
     var cols = null;
     var docBatch = [];
 
-    var transformXYCoord = function(doc) {
+    var transformXYCoord = function(idoc, odoc) {
         crimedb_geo.spcsToLatLong(
-            2401, doc['X-Coord'], doc['Y-Coord'], 'us-ft',
+            2401, idoc['X-Coord'], idoc['Y-Coord'], 'us-ft',
             function(err, gjo) {
                 if (err) {
                     callback(err);
                     return;
                 }
 
-                doc['location'] = gjo;
-                delete doc['X-Coord'];
-                delete doc['Y-Coord'];
-                delete doc['CAD-Address'];
-                delete doc['CAD-Street'];
-                delete doc['ILEADS-Address'];
-                delete doc['ILEADS-Street'];
+                odoc['location'] = gjo;
 
-                enqueueDoc(doc);
+                enqueueDoc(odoc);
             }
         );
     };
@@ -68,21 +62,23 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
             }
 
             /* Construct our object by mapping column names to values */
-            doc = {};
+            var idoc = {};
             for (var i = 0; i < min(rec.length, cols.length); ++i) {
-                doc[cols[i]] = rec[i].trim();
+                idoc[cols[i]] = rec[i].trim();
             }
 
             /*
              * Perform transformations on our input data to well-kown formats.
              * Do synchronous transforms first, as it's easier.
              */
-            doc['time_occurred'] =
-                (strptime(doc['Date Occured'], '%m/%d/%Y %H:%M')).getTime();
-            delete doc['Date Occured'];
+            var odoc = {};
+            odoc['description'] = idoc['Description'];
+            odoc['time'] =
+                (strptime(idoc['Date Occured'], '%m/%d/%Y %H:%M')).getTime() /
+                    1000;
 
             /* Perform asynchronous transformations */
-            transformXYCoord(doc);
+            transformXYCoord(idoc, odoc);
         }).on('end', function(count) {
             if (docBatch.length > 0) {
                 dbHandle.bulkDocs({docs: docBatch}, function(err) {
