@@ -10,91 +10,138 @@ var request = require('request');
 
 var CRIME_REPORT_URL = 'http://www.slmpd.org/CrimeReport.aspx';
 
-var downloadOne = function(stream, formFields, callback) {
-    request.post({
+/* Return the set of request options for making a form POST */
+var postOptions = function(formFields) {
+    return {
         url: CRIME_REPORT_URL,
         form: formFields,
-        headers: {'Accept': '*/*'}},
+        headers: {'Accept': '*/*'}
+    };
+};
+
+/* Download a set of files described by a mapping of filename to form fields */
+var downloadFiles = function(files, callback) {
+    var fileNames = Object.keys(files);
+    if (fileNames.length == 0) {
+        callback(null);
+        return;
+    }
+
+    var fileName = fileNames.pop();
+    var formFields = files[fileName];
+    delete files[fileName];
+
+    request.post(
+        postOptions(formFields),
         function(err, resp) {
             if (!err && resp.statusCode != 200) {
                 err = Error(
                     'Failed download with HTTP status ' + resp.statusCode);
             }
 
-            callback(err);
+            if (err) {
+                callback(err);
+            } else {
+                downloadFiles(files, callback);
+            }
         }
-    ).pipe(stream);
+    ).pipe(fs.createWriteStream(fileName));
 };
 
-var downloadMany = function(files, callback) {
-    var fileNames = Object.keys(files);
-    var fileName = fileNames.pop();
-    var formFields = files[fileName];
-    delete files[fileName];
-
-    downloadOne(fs.createWriteStream(fileName), formFields, function(err) {
+/*
+ * Post the given set of fields and process the result as a table of
+ * downloadable links to CSV files. On completion the callback gets an
+ * error and the set of fields to post to get the next page.
+ */
+var downloadPage = function(pageFields, nextPageNumber, callback) {
+    request.post(postOptions(pageFields), function(err, resp) {
         if (err) {
-            callback(err);
-        } else if (fileNames.length == 0) {
-            callback(null);
-        } else {
-            downloadMany(files, callback);
-        }
-    });
-};
-
-request(CRIME_REPORT_URL, function(err, resp) {
-    if (err) {
-        throw err;
-    }
-
-    if (resp.statusCode != 200) {
-        throw Error('Got HTTP response ' + resp.statusCode);
-    }
-
-    /* Template of the form fields that we'll submit with each download request */
-    var formFields = {
-        '__EVENTTARGET': '',
-        '__EVENTARGUMENT': '',
-    };
-
-    $ = cheerio.load(resp.body);
-    $('input[type="hidden"]').each(function(i, e) {
-        formFields[$(e).attr('name')] = $(e).attr('value');
-    });
-
-    /* Map of files to download to their form parameters */
-    var filesToDownload = {};
-
-    $('a').filter(function(i) {
-        var id = $(this).attr('id');
-        if (!id) {
-            return false;
-        }
-
-        return id.match(/^GridView1.*downloadD/) !== null;
-    }).each(function(i, e) {
-        var m = $(e).attr('href').match(/^javascript:__doPostBack\('([^']+)/);
-        if (!m) {
+            callback(err, null);
             return;
         }
 
-        var fields = {};
-        for (fieldName in formFields) {
-            fields[fieldName] = formFields[fieldName];
+        $ = cheerio.load(resp.body);
+
+        /* 
+         * Template of the form fields that we'll submit with each download
+         * request.
+         */
+        var formFields = {
+            '__EVENTTARGET': '',
+            '__EVENTARGUMENT': '',
+        };
+
+        $('input[type="hidden"]').each(function(i, e) {
+            formFields[$(e).attr('name')] = $(e).attr('value');
+        });
+
+        /* Map of files to download to their form parameters */
+        var filesToDownload = {};
+
+        $('a').filter(function(i) {
+            var id = $(this).attr('id');
+            if (!id) {
+                return false;
+            }
+
+            return id.match(/^GridView1.*downloadD/) !== null;
+        }).each(function(i, e) {
+            var m = $(e).attr('href').match(
+                /^javascript:__doPostBack\('([^']+)/);
+            if (!m) {
+                return;
+            }
+
+            var fields = {};
+            for (fieldName in formFields) {
+                fields[fieldName] = formFields[fieldName];
+            }
+            fields['__EVENTTARGET'] = m[1];
+
+            filesToDownload[$(e).text()] = fields;
+        });
+
+        /*
+         * Form parameters for the next page to download. Even though we know
+         * exactly how this is formed and could just synthesize it directly,
+         * make sure it's listed on the page so that we know when we're done
+         * paging.
+         */
+        var nextPageFields = null;
+        if ($('a[href="javascript:__doPostBack(\'GridView1\',\'Page$' + nextPageNumber + '\')"]').length == 1) {
+            nextPageFields = {};
+            for (fieldName in formFields) {
+                nextPageFields[fieldName] = formFields[fieldName];
+            }
+            nextPageFields['__EVENTTARGET'] = 'GridView1';
+            nextPageFields['__EVENTARGUMENT'] = 'Page$' + nextPageNumber;
         }
-        fields['__EVENTTARGET'] = m[1];
 
-        filesToDownload[$(e).text()] = fields;
+        downloadFiles(filesToDownload, function(err) {
+            callback(err, nextPageFields);
+        });
     });
+};
 
-    downloadMany(filesToDownload, function(err) {
-        if (err) {
-            throw err;
+/*
+ * Download a sequence of pages starting with the given set of fields and
+ * continuing through pages until there are none left.
+ */
+var downloadAllPages = function(pageFields, nextPageNumber, callback) {
+    downloadPage(pageFields, nextPageNumber, function(err, nextPageFields) {
+        if (err || nextPageFields === null) {
+            callback(err);
+            return;
         }
 
-        console.log('Success!');
+        downloadAllPages(nextPageFields, nextPageNumber + 1, callback);
     });
+};
+
+downloadAllPages({}, 2, function(err) {
+    if (err) {
+        throw err;
+    }
 });
 
 // vim:filetype=javascript
