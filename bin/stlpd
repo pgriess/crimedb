@@ -5,6 +5,10 @@
  *
  * XXX: Need to handle errors that don't have reason fields (e.g. those that
  *      come from somewhere other than CouchDB).
+ *
+ * XXX: The document queueing in importCSVFile is not interacting correctly
+ *      with the callback, which gets invoked as soon as we're done parsing the
+ *      CSV file. Instead, it should wait until we're done inserting docs.
  */
 
 var console = require('console');
@@ -92,6 +96,27 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
         });
 };
 
+/*
+ * Import many CSV files into the given database.
+ */
+var importCSVFiles = function(dbHandle, csvPaths, callback) {
+    if (csvPaths.length == 0) {
+        callback(null);
+        return;
+    }
+
+    var csvPath = csvPaths.shift();
+    importCSVFile(dbHandle, csvPath, function(err) {
+        if (err) {
+            console.log('Error importing ' + csvPath);
+            callback(err);
+        } else {
+            console.log('Successfully imported ' + csvPath);
+            importCSVFiles(dbHandle, csvPaths, callback);
+        }
+    });
+};
+
 var opts = optimist.options({
     help: {
         alias: 'h',
@@ -127,7 +152,7 @@ crimedb_common.getDB(args.couchdb, true, args.clear, function(err, dbHandle) {
         throw Error(err.reason);
     }
 
-    importCSVFile(dbHandle, args._[0], function(err) {
+    importCSVFiles(dbHandle, args._, function(err) {
         if (err) {
             throw err;
         }
