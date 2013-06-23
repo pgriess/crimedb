@@ -17,7 +17,6 @@ var crimedb_geo = require('crimedb/geo');
 var csv = require('csv');
 var optimist = require('optimist');
 var strptime = require('micro-strptime').strptime;
-var util = require('util');
 
 /*
  * Import a CSV file into the given database.
@@ -132,8 +131,7 @@ var opts = optimist.options({
 usage: $0 <path>\n\
 \n\
 Imports the file at <path> into the CouchDB database.\
-')
-    .wrap(80);
+').wrap(80);
 var args = opts.argv;
 
 if (args.h) {
@@ -142,7 +140,7 @@ if (args.h) {
 }
 
 if (args._.length < 1) {
-    util.error('missing required <path> argument\n');
+    console.error('missing required <path> argument\n');
     opts.showHelp();
     process.exit(1);
 }
