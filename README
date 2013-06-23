@@ -1,7 +1,59 @@
 o Interesting data sources
+
     . http://www.slmpd.org/Crimereports.shtml
     . http://maps.stlouisco.com/police/
     . http://apps.sfgov.org/datafiles/index.php?dir=Police&by=name&order=asc
     . http://www.bjs.gov/ucrdata/Search/Crime/Crime.cfm
     . https://github.com/newsapps/chicagocrime
     . http://oakland.crimespotting.org/api
+
+o Storage
+
+    . CouchDB doesn't really support multi-term indexing very well. Given that
+      documents are small, Solr4 (which supports geospatial queries) may be a
+      better fit since we can store the documents in the index.
+
+        . Solr expects an out-of-band index publication system (i.e. no
+          live udpates of documents). This is fine w/ me since we'd want
+          to generate this stuff offline anyway.
+
+        . This would also fit reasonbly well into a system that generates
+          multiple artifacts (Solr index, CSV files, etc)
+
+o API
+
+    . Result objects
+
+        . time -- epoch timestamp in seconds, GMT
+
+        . location -- GeoJSON
+
+        . description -- textual description of event
+
+    . Initially, only searchable/sortable by timestamp (since Couch doesn't
+      have good support for multi-key indices).
+
+    . http://api.crimedb.org/v1
+
+        . /query?
+            . time=NNN:MMM -- time range to query, range of [NNN, MMM)
+            . limit=NNN -- maximum number of results
+            . cursor=XXX -- opaque cursor returned by previous query
+
+o Server implementation
+
+    . Requirements
+
+        . Backend of some variety
+
+        . Web server to perform transformations between external API and storage
+          engine
+
+        . Web server to host static content (e.g. API docs, eventually bulk
+          downloads).
+
+    . Implementation
+
+        . CouchDB for storage, queries
+
+        . NodeJS / Hapi for web server, static file serving
