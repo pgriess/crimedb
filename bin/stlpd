@@ -5,10 +5,6 @@
  *
  * XXX: Need to handle errors that don't have reason fields (e.g. those that
  *      come from somewhere other than CouchDB).
- *
- * XXX: The document queueing in importCSVFile is not interacting correctly
- *      with the callback, which gets invoked as soon as we're done parsing the
- *      CSV file. Instead, it should wait until we're done inserting docs.
  */
 
 var console = require('console');
@@ -20,11 +16,18 @@ var strptime = require('micro-strptime').strptime;
 
 /*
  * Import a CSV file into the given database.
+ *
+ * Note that even if we encounter an error along the way, this function will
+ * attempt to import all rows from the CSV file before reporting the error via
+ * the callback.
  */
 var importCSVFile = function(dbHandle, csvPath, callback) {
     var min = function(a, b) { return a > b ? b : a; };
     var cols = null;
     var docBatch = [];
+    var doneParsing = false;
+    var outstandingAdds = 0;
+    var callbackErr = null;
 
     var transformXYCoord = function(idoc, odoc) {
         crimedb_geo.spcsToLatLong(
@@ -37,18 +40,21 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
 
                 odoc['location'] = gjo;
 
-                enqueueDoc(odoc);
+                docBatch.push(odoc);
+                checkFlush(false);
             }
         );
     };
 
-    var enqueueDoc = function(doc) {
-        docBatch.push(doc);
-
-        if (docBatch.length >= 10) {
+    var checkFlush = function(forceFlush) {
+        if (forceFlush || docBatch.length >= 10) {
+            ++outstandingAdds;
             dbHandle.bulkDocs({docs: docBatch}, function(err) {
-                if (err) {
-                    callback(err);
+                --outstandingAdds;
+                callbackErr = callbackErr || err;
+
+                if (outstandingAdds == 0 && doneParsing) {
+                    callback(callbackErr);
                 }
             });
 
@@ -83,15 +89,12 @@ var importCSVFile = function(dbHandle, csvPath, callback) {
             /* Perform asynchronous transformations */
             transformXYCoord(idoc, odoc);
         }).on('end', function(count) {
-            if (docBatch.length > 0) {
-                dbHandle.bulkDocs({docs: docBatch}, function(err) {
-                    callback(err);
-                });
-            } else {
-                callback(null);
-            }
+            doneParsing = true;
+            checkFlush(true);
         }).on('error', function(err) {
-            callback(err);
+            callbackErr = callbackErr || err;
+            doneParsing = true;
+            checkFlush(true);
         });
 };
 
