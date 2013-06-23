@@ -1,3 +1,3 @@
 function(doc) {
-    emit(doc['time_occurred'], doc);
+    emit(doc['time'], doc);
 }
