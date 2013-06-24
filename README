@@ -33,12 +33,10 @@ o API
     . Initially, only searchable/sortable by timestamp (since Couch doesn't
       have good support for multi-key indices).
 
-    . http://api.crimedb.org/v1
-
-        . /query?
-            . time=NNN:MMM -- time range to query, range of [NNN, MMM)
-            . limit=NNN -- maximum number of results
-            . cursor=XXX -- opaque cursor returned by previous query
+    . http://api.crimedb.org/crimes?
+        . time=NNN:MMM -- time range to query, range of [NNN, MMM)
+        . limit=NNN -- maximum number of results
+        . cursor=XXX -- opaque cursor returned by previous query
 
 o Server implementation
 
@@ -50,10 +48,19 @@ o Server implementation
           engine
 
         . Web server to host static content (e.g. API docs, eventually bulk
-          downloads).
+          downloads)
+
+        . Access logs
+
+        . Some sort of analytics
 
     . Implementation
 
         . CouchDB for storage, queries
 
-        . NodeJS / Hapi for web server, static file serving
+        . NodeJS / Hapi for web server, static file serving, access logging
+
+            . Use streaming JSON parser to do transforms; one exists for
+              NodeJS, but it might suck
+
+        . Google Analytics
