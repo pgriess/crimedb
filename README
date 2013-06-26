@@ -22,13 +22,27 @@ o Storage
 
 o API
 
-    . Result objects
+    . Crime object
 
         . time -- epoch timestamp in seconds, GMT
 
         . location -- GeoJSON
 
         . description -- textual description of event
+
+    . Result envelope
+
+        . Keys from http://tools.ietf.org/html/draft-nottingham-http-problem-04
+          to indicate problems
+
+            . problemType
+
+            . title
+
+        . results -- key for results array
+
+        . cursor -- cursor to provide to a subsequent request to continue
+                    iterating over the result set
 
     . Initially, only searchable/sortable by timestamp (since Couch doesn't
       have good support for multi-key indices).
