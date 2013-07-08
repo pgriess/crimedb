@@ -800,7 +800,7 @@
      <lst name="defaults">
        <str name="echoParams">explicit</str>
        <int name="rows">10</int>
-       <str name="df">text</str>
+       <str name="df">description</str>
      </lst>
     <!-- In addition to defaults, "appends" params can be specified
          to identify values which should be appended to the list of
@@ -862,7 +862,7 @@
        <str name="echoParams">explicit</str>
        <str name="wt">json</str>
        <str name="indent">true</str>
-       <str name="df">text</str>
+       <str name="df">description</str>
      </lst>
   </requestHandler>
 
@@ -901,20 +901,20 @@
        <!-- Query settings -->
        <str name="defType">edismax</str>
        <str name="qf">
-          text^0.5 features^1.0 name^1.2 sku^1.5 id^10.0 manu^1.1 cat^1.4
+          description^0.5 features^1.0 name^1.2 sku^1.5 id^10.0 manu^1.1 cat^1.4
           title^10.0 description^5.0 keywords^5.0 author^2.0 resourcename^1.0
        </str>
-       <str name="df">text</str>
+       <str name="df">description</str>
        <str name="mm">100%</str>
        <str name="q.alt">*:*</str>
        <str name="rows">10</str>
        <str name="fl">*,score</str>
 
        <str name="mlt.qf">
-         text^0.5 features^1.0 name^1.2 sku^1.5 id^10.0 manu^1.1 cat^1.4
+         description^0.5 features^1.0 name^1.2 sku^1.5 id^10.0 manu^1.1 cat^1.4
          title^10.0 description^5.0 keywords^5.0 author^2.0 resourcename^1.0
        </str>
-       <str name="mlt.fl">text,features,name,sku,id,manu,cat,title,description,keywords,author,resourcename</str>
+       <str name="mlt.fl">description,features,name,sku,id,manu,cat,title,description,keywords,author,resourcename</str>
        <int name="mlt.count">3</int>
 
        <!-- Faceting defaults -->
@@ -1512,12 +1512,6 @@
        results for a given query regardless of the normal lucene
        scoring.
     -->
-  <searchComponent name="elevator" class="solr.QueryElevationComponent" >
-    <!-- pick a fieldType to analyze queries -->
-    <str name="queryFieldType">string</str>
-    <str name="config-file">elevate.xml</str>
-  </searchComponent>
-
   <!-- A request handler for demonstrating the elevator component -->
   <requestHandler name="/elevate" class="solr.SearchHandler" startup="lazy">
     <lst name="defaults">
