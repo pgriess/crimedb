@@ -1700,6 +1700,14 @@
       <processor class="solr.RunUpdateProcessorFactory" />
     </updateRequestProcessorChain>
   -->
+
+  <!-- UUID population of the 'id' field -->
+  <updateRequestProcessorChain name="id">
+    <processor class="solr.UUIDUpdateProcessorFactory">
+        <str name="fieldName">id</str>
+    </processor>
+    <processor class="solr.RunUpdateProcessorFactory"/>
+  </updateRequestProcessorChain>
  
   <!-- Response Writers
 
