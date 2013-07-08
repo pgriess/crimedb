@@ -78,3 +78,26 @@ o Server implementation
               NodeJS, but it might suck
 
         . Google Analytics
+
+o Using Solr4
+
+    . The Solr context is solr-4.3.0 based on the .war in webapps/
+
+    . The CrimeDB index is hosted at /crime
+
+    . Adding documents
+
+        . Hit the /crime/update/json endpoint with a POST, Content-Type:
+          application/json, and an array of JSON documents. Sending an object
+          as the top-level type implies that we're doing a complex operation of
+          adds/deletes/etc.
+
+        . Set ?commit=true to force the update to be visible immediately
+
+        . Set ?update.chain=id to have the 'id' update handler auto-populate the
+          UUID 'id' field. This is configured in solrconfig.xml.
+
+    . Querying documents
+
+        . Hit the /crime/query endpoint with a GET and a ?q=<query> to search
+          by the given query. This can't be empty (which will return no results).
