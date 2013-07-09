@@ -24,12 +24,12 @@ var strptime = require('micro-strptime').strptime;
 var importCSVFile = function(solrUrl, csvPath, callback) {
     var min = function(a, b) { return a > b ? b : a; };
     var cols = null;
-    var docBatch = [];
+    var insertQueue = [];
+    var outstandingDocs = 0;
     var doneParsing = false;
-    var outstandingAdds = 0;
     var callbackErr = null;
 
-    var transformXYCoord = function(idoc, odoc) {
+    var transformXYCoord = function(idoc, odoc, callback) {
         crimedb_geo.spcsToLatLong(
             2401, idoc['X-Coord'], idoc['Y-Coord'], 'us-ft',
             function(err, gjo) {
@@ -41,32 +41,42 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
                 // TODO: later
                 // odoc['location'] = gjo;
 
-                docBatch.push(odoc);
-                checkFlush(false);
+                insertQueue.push([odoc, callback]);
+                checkFlush();
             }
         );
     };
 
-    var checkFlush = function(forceFlush) {
-        if (forceFlush || docBatch.length >= 10) {
-            ++outstandingAdds;
+    var checkFlush = function() {
+        var BATCHSIZE = 10;
 
-            request({
-                url: solrUrl + '/update/json',
-                qs: {'update.chain': 'id'},
-                method: 'POST',
-                json: docBatch},
-                function(err, resp, respBody) {
-                    --outstandingAdds;
-                    callbackErr = callbackErr || err;
-
-                    if (outstandingAdds == 0 && doneParsing) {
-                        callback(callbackErr);
-                    }
-                }
-            );
-            docBatch = [];
+        /* 
+         * Don't flush unless we're over out batch size, or we're done parsing
+         * and don't have a ton of docs left. This latter condition ensures
+         * that we don't strand docs in the insertQueue after we're done
+         * parsing, which would prevent the final callback from running.
+         */
+        if (insertQueue.length < BATCHSIZE &&
+            !doneParsing &&
+            outstandingDocs > BATCHSIZE) {
+            return;
         }
+
+        var batch = insertQueue.splice(0, insertQueue.length);
+        var docs = batch.map(function(v) { return v[0]; });
+        var callbacks = batch.map(function(v) { return v[1]; });
+
+        request({
+            url: solrUrl + '/update/json',
+            qs: {'update.chain': 'id'},
+            method: 'POST',
+            json: docs},
+            function(err, resp, respBody) {
+                callbacks.forEach(function(cb) {
+                    cb(err);
+                });
+            }
+        );
     };
 
     csv().from(csvPath)
@@ -102,14 +112,30 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
                 'Z';
 
             /* Perform asynchronous transformations */
-            transformXYCoord(idoc, odoc);
+            ++outstandingDocs;
+            transformXYCoord(idoc, odoc, function(err) {
+                --outstandingDocs;
+                callbackErr = callbackErr || err;
+
+                if (!doneParsing || outstandingDocs > 0) {
+                    return;
+                }
+
+                request({
+                    url: solrUrl + '/update/json',
+                    qs: {'commit': 'true'},
+                    method: 'POST',
+                    json: []},
+                    function(err, resp, respBody) {
+                        callback(callbackErr || err);
+                    }
+                );
+            });
         }).on('end', function(count) {
             doneParsing = true;
-            checkFlush(true);
         }).on('error', function(err) {
             callbackErr = callbackErr || err;
             doneParsing = true;
-            checkFlush(true);
         });
 };
 
