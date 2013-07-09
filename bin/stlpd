@@ -8,6 +8,7 @@
  */
 
 var console = require('console');
+var crimedb_common = require('crimedb/common');
 var crimedb_geo = require('crimedb/geo');
 var csv = require('csv');
 var optimist = require('optimist');
@@ -100,16 +101,9 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
             var odoc = {};
             odoc['description'] = idoc['Description'];
 
-            date = strptime(idoc['Date Occured'], '%m/%d/%Y %H:%M')
-            odoc['date'] =
-                date.getUTCFullYear() + '-' +
-                (date.getMonth() + 1) + '-' +
-                date.getUTCDate() +
-                'T' +
-                date.getUTCHours() + ':' +
-                date.getUTCMinutes() + ':' +
-                date.getUTCSeconds() +
-                'Z';
+            odoc['date'] = crimedb_common.formatDateForSolr(
+                strptime(idoc['Date Occured'], '%m/%d/%Y %H:%M')
+            );
 
             /* Perform asynchronous transformations */
             ++outstandingDocs;

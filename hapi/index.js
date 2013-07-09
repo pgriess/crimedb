@@ -3,6 +3,7 @@
  */
 
 var console = require('console');
+var crimedb_common = require('crimedb/common.js');
 var hapi = require('hapi');
 var request = require('request');
 var strptime = require('micro-strptime').strptime;
@@ -46,9 +47,44 @@ var api_handler = function(req) {
      * XXX: Parameter validation, including types and ranges. Hapi can
      *      do this sort of thing, AFAICT.
      */
-    var solrQuery = {};
-    solrQuery.q = '*:*';
-    solrQuery.limit = Math.min(req.query.limit || 100, 1000);
+    var solrQuery = {
+        limit: 100
+    };
+
+    if ('limit' in req.query) {
+        solrQuery.limit = Math.min(req.query.limit, 1000);
+    }
+
+    if ('time' in req.query) {
+        var arr = /^\[(\d+):(\d+)\]$/.exec(req.query.time);
+        if (!arr) {
+            req.reply(
+                JSON.stringify({
+                    title: 'Invalid query parameter',
+                    problemType: 'http://localhost:8888/errors/Invalid_query_parameter'}))
+                .code(500)
+                .type('application/api-problem+json');
+            return;
+        }
+
+        var from = new Date(arr[1] * 1000);
+        var to = new Date(arr[2] * 1000);
+        var clause = '+date:[' +
+            crimedb_common.formatDateForSolr(from) + ' TO ' +
+            crimedb_common.formatDateForSolr(to) + ']';
+
+        solrQuery.q = ('q' in solrQuery) ?
+            (solrQuery.q + ' ' + clause) :
+            clause;
+    }
+
+    /*
+     * Set our default query last so that we give the filters a chance to be
+     * added earlier.
+     */
+    if (!('q' in solrQuery)) {
+        solrQuery.q = '*:*';
+    }
 
     request({
         url: 'http://localhost:8080/solr-4.3.0/crime/query',

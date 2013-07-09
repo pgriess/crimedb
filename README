@@ -48,7 +48,7 @@ o API
       have good support for multi-key indices).
 
     . http://api.crimedb.org/crimes?
-        . time=NNN:MMM -- time range to query, range of [NNN, MMM)
+        . time=[NNN:MMM] -- time range to query, range of [NNN, MMM)
         . limit=NNN -- maximum number of results
         . cursor=XXX -- opaque cursor returned by previous query
 
