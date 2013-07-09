@@ -56,7 +56,7 @@ var api_handler = function(req) {
         json: [],
         headers: {'Accept': 'application/json'}},
         function(err, resp, body) {
-            if (err) {
+            if (err || 'error' in body) {
                 // XXX: Generate an absolute URI for the current
                 //      hostname. Write handler for each of these pages
                 //      so that they're actually useful.
@@ -70,8 +70,6 @@ var api_handler = function(req) {
             }
 
             /*
-             * TODO: Handle Solr errors here. There may be some in the response
-             *       format.
              * TODO: Cursors.
              */
             req.reply(JSON.stringify({
