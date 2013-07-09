@@ -7,13 +7,38 @@ var hapi = require('hapi');
 var request = require('request');
 var strptime = require('micro-strptime').strptime;
 
-var api_handler = function(req) {
+/*
+ * Map Solr fields to our public API
+ */
+var transformSolrDocument = (function() {
+    /*
+     * Each property of this object describes how a Solr field of that name is
+     * mapped in to the output document. Fields not listed here are stripped
+     * from Solr output.
+     */
     var FIELD_TRANSFORMATIONS = {
         date: ['time', function(v) {
             return strptime(v, '%Y-%m-%dT%H:%M:%S%Z').getTime() / 1000;
         }],
-        description: ['description', function(v) { return v; }],
+        description: ['description', null],
     };
+
+    return function(inDoc) {
+        var outDoc = {};
+        for (k in inDoc) {
+            if (!(k in FIELD_TRANSFORMATIONS)) {
+                continue;
+            }
+
+            ft = FIELD_TRANSFORMATIONS[k];
+            outDoc[ft[0]] = (ft[1]) ? ft[1](inDoc[k]) : inDoc[k];
+        }
+
+        return outDoc;
+    };
+})();
+
+var api_handler = function(req) {
 
     /*
      * Apply query parameters from the request
@@ -49,22 +74,8 @@ var api_handler = function(req) {
              *       format.
              * TODO: Cursors.
              */
-            var outDocs = body.response.docs.map(function(inDoc) {
-                var outDoc = {};
-                for (k in inDoc) {
-                    if (!(k in FIELD_TRANSFORMATIONS)) {
-                        continue;
-                    }
-
-                    ft = FIELD_TRANSFORMATIONS[k];
-                    outDoc[ft[0]] = ft[1](inDoc[k]);
-                }
-
-                return outDoc;
-            });
-
-
-            req.reply(JSON.stringify({results: outDocs}))
+            req.reply(JSON.stringify({
+                    results: body.response.docs.map(transformSolrDocument)}))
                 .code(200)
                 .type('application/vnd.crimedb.org+json')
         }
