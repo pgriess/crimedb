@@ -22,6 +22,7 @@ var transformSolrDocument = (function() {
             return strptime(v, '%Y-%m-%dT%H:%M:%S%Z').getTime() / 1000;
         }],
         description: ['description', null],
+        location: ['location', null],
     };
 
     return function(inDoc) {
@@ -72,6 +73,31 @@ var api_handler = function(req) {
         var clause = '+date:[' +
             crimedb_common.formatDateForSolr(from) + ' TO ' +
             crimedb_common.formatDateForSolr(to) + ']';
+
+        solrQuery.q = ('q' in solrQuery) ?
+            (solrQuery.q + ' ' + clause) :
+            clause;
+    }
+
+    if ('location' in req.query) {
+        var arr = /^\[(-?[\d\.]+)\s*,\s*(-?[\d\.]+):(-?[\d\.]+)\s*,\s*(-?[\d\.]+)\]$/.exec(req.query.location);
+        if (!arr) {
+            req.reply(
+                JSON.stringify({
+                    title: 'Invalid query parameter',
+                    problemType: 'http://localhost:8888/errors/Invalid_query_parameter'}))
+                .code(500)
+                .type('application/api-problem+json');
+            return;
+        }
+
+        var lat1 = parseFloat(arr[1]);
+        var lon1 = parseFloat(arr[2]);
+        var lat2 = parseFloat(arr[3]);
+        var lon2 = parseFloat(arr[4]);
+        var clause = '+location:[' +
+            lat1 + ',' + lon1 + ' TO ' +
+            lat2 + ',' + lon2 + ']';
 
         solrQuery.q = ('q' in solrQuery) ?
             (solrQuery.q + ' ' + clause) :
