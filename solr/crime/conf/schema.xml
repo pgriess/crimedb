@@ -24,7 +24,8 @@
         <!-- A UUID -->
         <fieldtype name="uuid" class="solr.UUIDField"/>
 
-        <!-- TODO: Geo points -->
+        <!-- Geographic points -->
+        <fieldtype name="geo-point" class="solr.SpatialRecursivePrefixTreeFieldType" geo="true" units="degrees"/>
     </types>
 
     <fields>
@@ -37,5 +38,6 @@
         <!-- Fields for our schema -->
         <field name="date" type="date" indexed="true" stored="true"/>
         <field name="description" type="text" indexed="true" stored="true"/>
+        <field name="location" type="geo-point" indexed="true" stored="true"/>
     </fields>
 </schema>

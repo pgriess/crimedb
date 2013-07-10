@@ -39,8 +39,8 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
                     return;
                 }
 
-                // TODO: later
-                // odoc['location'] = gjo;
+                odoc['location'] =
+                    gjo.coordinates[0] + ',' + gjo.coordinates[1];
 
                 insertQueue.push([odoc, callback]);
                 checkFlush();
