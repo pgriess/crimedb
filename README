@@ -101,3 +101,10 @@ o Using Solr4
 
         . Hit the /crime/query endpoint with a GET and a ?q=<query> to search
           by the given query. This can't be empty (which will return no results).
+
+        . Geo points can be queried using syntax here:
+
+            http://wiki.apache.org/solr/SolrAdaptersForLuceneSpatial4
+
+          However, be careful (when using Curl, at least) that a lot of that
+          syntax has to be escaped. Be sure to run it through urlquote.
