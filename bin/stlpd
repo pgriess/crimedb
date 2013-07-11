@@ -49,7 +49,7 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
     };
 
     var checkFlush = function() {
-        var BATCHSIZE = 10;
+        var BATCHSIZE = 100;
 
         /* 
          * Don't flush unless we're over out batch size, or we're done parsing
