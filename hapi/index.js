@@ -22,7 +22,9 @@ var transformSolrDocument = (function() {
             return strptime(v, '%Y-%m-%dT%H:%M:%S%Z').getTime() / 1000;
         }],
         description: ['description', null],
-        location: ['location', null],
+        location: ['location', function(v) {
+            return {type: 'Point', coordinates: v.split(',')};
+        }],
     };
 
     return function(inDoc) {
