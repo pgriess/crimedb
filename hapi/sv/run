@@ -1,0 +1,18 @@
+#!/bin/bash -x
+#
+# runsv(8) script that starts NodeJS.
+#
+# This can also be run manually (e.g. on developer's system).
+
+# Redirect stdout to stderr so that our log script catches it
+exec 2>&1
+
+# Read some default settings from the environment
+[[ -f $(dirname $0)/env ]] && . $(dirname $0)/env
+
+export CRIMEDB_HOME=${CRIMEDB_HOME:-$(readlink -f $(dirname $(readlink -f $0))/../..)}
+
+export NODE_PATH=${NODE_PATH:-/usr/lib/node_modules}
+NODE_PATH=$NODE_PATH:$CRIMEDB_HOME/lib
+
+exec node $CRIMEDB_HOME/hapi/index.js
