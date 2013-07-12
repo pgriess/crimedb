@@ -1,0 +1,15 @@
+#!/bin/bash -x
+#
+# runsv(8) script for logging Jetty.
+
+# Read some default settings from the environment
+[[ -f $(dirname $0)/../env ]] && . $(dirname $0)/../env
+
+LOGDIR=${LOGDIR:-/var/log/jetty}
+
+# Make sure that the log directory is set up
+mkdir -p $LOGDIR
+[[ -f $(dirname $0)/config ]] && \
+    cp -f $(dirname $0)/config $LOGDIR/config
+
+exec svlogd -ttt $LOGDIR
