@@ -1,0 +1,13 @@
+#!/bin/bash -x
+#
+# Push the entire source tree to
+
+if [[ $# -ne 1 ]] ; then
+    echo >&2 "$(dirname $0): missing rsync destination"
+    exit 1
+fi
+
+exec rsync -rv --delete-excluded \
+    --exclude=/.git \
+    --exclude=/solr/crime/data \
+    $(dirname $0)/.. $1
