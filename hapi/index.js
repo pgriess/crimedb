@@ -51,11 +51,11 @@ var api_handler = function(req) {
      *      do this sort of thing, AFAICT.
      */
     var solrQuery = {
-        limit: 100
+        rows: 100
     };
 
     if ('limit' in req.query) {
-        solrQuery.limit = Math.min(req.query.limit, 1000);
+        solrQuery.rows = Math.min(req.query.limit, 1000);
     }
 
     if ('time' in req.query) {
