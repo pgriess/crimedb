@@ -144,7 +144,7 @@ var api_handler = function(req) {
     );
 };
 
-var server = hapi.createServer('localhost', 8888, {cors: true})
+var server = hapi.createServer('0.0.0.0', 8888, {cors: true})
 server.route([{
         path: '/crimes',
         method: 'GET',
