@@ -1,0 +1,67 @@
+<html>
+    <head>
+        <title>CrimeDB</title>
+
+        <style type="text/css">
+            body {
+                font-family: helvetica;
+                margin-left: 15%;
+                margin-right: 15%;
+            }
+        </style>
+    </head>
+
+    <body>
+        <center><h1>CrimeDB</h1></center>
+
+        <p>
+            CrimeDB is a searchable database of crime data with an easy-to-use
+            HTTP JSON API. At the moment, its database consists of more than
+            individual 300,000 crimes from the <a
+            href="http://www.slmpd.org/">St Louis Metropolitan Police
+            Department</a> from April 2008 - May 2013. Please feel free to use
+            this data however you see fit. If you come up with anything cool,
+            let me know at <a href="http://twitter.com/pgriess">@pgriess</a>.
+        </p>
+
+        <h2>API</h2>
+
+        <p>
+            The API is pretty simple to use. Just issue <tt>GET</tt> requests
+            to <tt>http://api.crimedb.org/crimes</tt> and you'll get back JSON
+            data with the following fields:
+        </p>
+
+        <ul>
+            <li><tt>description</tt> -- freeform textual description of the
+                                        crime</li>
+            <li><tt>time</tt> -- time the crime occurred, in UTC epoch seconds</li>
+            <li><tt>location</tt> -- a <a
+            href="http://www.geojson.org/">GeoJSON</a> entity describing the
+            location of the crime
+        </ul>
+
+        <p>
+            Requests to the <tt>/crimes</tt> URL support some query parameters
+            that shape how results are returned:
+        </p>
+
+        <ul>
+            <li><tt>description=TTT</tt> -- filter results to only those whose
+            description contains the given text
+            <li><tt>time=[NNN:MMM]</tt> -- filter results to only those
+            that occurred between NNN and MMM UTC epoch seconds</li>
+            <li><tt>location=[&lt;lat1&gt;,&lt;lon1&gt;:&lt;lat2&gt;,&lt;lon2&gt;]</tt>
+            -- filter results to only those that occurred within the bounding
+            box described by the two points</li>
+            <li><tt>limit=NNN</tt> -- limit the number of results returned</li>
+        </ul>
+
+        <p>
+            As an example, to retrieve all crimes that occurred on January 1,
+            2013 CST, you would ask for crimes between 1357020000 and
+            1357106400 by setting the <tt>time</tt> query paramter like so:
+            <tt>time=[1357020000:1357106400]</tt>.
+        </p>
+    </body>
+</html>

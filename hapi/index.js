@@ -151,10 +151,12 @@ var api_handler = function(req) {
     );
 };
 
-var server = hapi.createServer('0.0.0.0', 8888, {cors: true})
-server.route([{
-        path: '/crimes',
-        method: 'GET',
-        handler: api_handler,
-}]);
+var server = hapi.createServer('0.0.0.0', 8888, {
+    cors: true,
+    files: { relativeTo: 'routes' },
+});
+server.route([
+    { path: '/crimes', method: 'GET', handler: api_handler },
+    { path: '/', method: 'GET', handler: { file: 'index.html' } },
+]);
 server.start();
