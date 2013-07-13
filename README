@@ -115,3 +115,19 @@ o UI
 
     . Use http://maps.stamen.com/toner/#12/37.7706/-122.3782 for map tiles to
       feed into Leaflet?
+
+o EC2
+
+    . Centos 6.3 AMI
+
+    . Built runit RPM via https://github.com/imeyer/runit-rpm
+
+    . Built NodeJS RPM via https://github.com/kazuhisya/nodejs-rpm
+
+    . Downloaded Jetty 9.x and dumped it in /opt/jetty
+
+    . Build proj-4.8 from source. Didn't use pre-built RPM because couldn't
+      find one with NAD support
+
+        . Use http://download.osgeo.org/proj/proj-datumgrid-1.5.zip when
+          building Proj (unzip and look at README.NADUS).
