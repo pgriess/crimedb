@@ -106,6 +106,13 @@ var api_handler = function(req) {
             clause;
     }
 
+    if ('description' in req.query) {
+        var clause = '+description:' + req.query.description;
+        solrQuery.q = ('q' in solrQuery) ?
+            (solrQuery.q + ' ' + clause) :
+            clause;
+    }
+
     /*
      * Set our default query last so that we give the filters a chance to be
      * added earlier.
