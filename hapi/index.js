@@ -98,8 +98,8 @@ var api_handler = function(req) {
         var lat2 = parseFloat(arr[3]);
         var lon2 = parseFloat(arr[4]);
         var clause = '+location:[' +
-            lat1 + ',' + lon1 + ' TO ' +
-            lat2 + ',' + lon2 + ']';
+            Math.min(lat1,lat2) + ',' + Math.min(lon1,lon2) + ' TO ' +
+            Math.max(lat1,lat2) + ',' + Math.max(lon1,lon2) + ']';
 
         solrQuery.q = ('q' in solrQuery) ?
             (solrQuery.q + ' ' + clause) :
