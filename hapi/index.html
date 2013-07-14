@@ -57,11 +57,80 @@
             <li><tt>limit=NNN</tt> -- limit the number of results returned</li>
         </ul>
 
+        <h3>Examples</h3>
+
         <p>
-            As an example, to retrieve all crimes that occurred on January 1,
-            2013 CST, you would ask for crimes between 1357020000 and
-            1357106400 by setting the <tt>time</tt> query paramter like so:
-            <tt>time=[1357020000:1357106400]</tt>.
+            Retrieve all crimes that occurred on January 1, 2013 CST by using
+            the <tt>time</tt> query paramter to filter. Note that the CST time
+            zone is 6 hours behind UTC, 12:00am January 1 CST is 6:00am January
+            1, 2013 UTC.
         </p>
+
+        <pre>
+$ curl -g 'http://api.crimedb.org/crimes?time=[1357020000:1357106400]'
+{
+    "results": [
+        {
+            "description": "LARCENY-MTR VEH PARTS UNDER $500",
+            "location": {
+                "coordinates": [
+                    "38.62388888888889",
+                    "-90.2213888888889"
+                ],
+                "type": "Point"
+            },
+            "time": 1357020000
+        },
+        {
+            "description": "BURGLARY-RESDNCE/UNK TIM/UNLW EN/UNOCCUPIED",
+            "location": {
+                "coordinates": [
+                    "38.57027777777778",
+                    "-90.24305555555556"
+                ],
+                "type": "Point"
+            },
+            "time": 1357027200
+        },
+        ...
+    ]
+}
+        </pre>
+
+        <p>
+            Retrieve all crimes that occurred within a few blocks of Busch
+            Stadium, which is at 38.62371760,-90.19330450.
+        </p>
+
+        <pre>
+$ curl -g 'http://api.crimedb.org/crimes?location=[38.629,-90.198:38.619,-90.188]'
+{
+    "results": [
+        {
+            "description": "BURGLARY-RESIDENCE/DAY/FORCE ENT/UNOCCUPIED",
+            "location": {
+                "coordinates": [
+                    "38.62722222222222",
+                    "-90.18805555555556"
+                ],
+                "type": "Point"
+            },
+            "time": 1238833800
+        },
+        {
+            "description": "ROBBERY-BANK     /FIREARM USED/SUCCESSFUL",
+            "location": {
+                "coordinates": [
+                    "38.628055555555555",
+                    "-90.1913888888889"
+                ],
+                "type": "Point"
+            },
+            "time": 1239890100
+        },
+        ...
+    ]
+}
+        </pre>
     </body>
 </html>
