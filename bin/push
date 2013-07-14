@@ -1,13 +1,69 @@
-#!/bin/bash -x
+#!/bin/bash
 #
 # Push the entire source tree to
 
+optRestartHapi=
+optCrimeDBDir=/opt/crimedb
+optCrimeDBHost=
+
+log() {
+    echo >&2 "$(basename $0): $@"
+}
+
+die() {
+    log $@
+    exit 1
+}
+
+usage() {
+    cat <<EOF
+usage: $(basename $0) [options] <destination>
+
+Push CrimeDB to the given destination, which should be a string of the form
+[<user>@]<hostname>.
+
+Options:
+  -d <dir>                    push to the given directory on the destination
+                              host (default: $optCrimeDBDir)
+  -h                          display help
+  -r                          restart Hapi (default: don't restart)
+EOF
+}
+
+while getopts "d:hr" OPTOPT ; do
+    case $OPTOPT in
+        d)
+            optCrimeDBDir=$OPTARG
+            ;;
+
+        h)
+            usage
+            exit 0
+            ;;
+
+        r)
+            optRestartHapi=1
+            ;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
 if [[ $# -ne 1 ]] ; then
-    echo >&2 "$(dirname $0): missing rsync destination"
+    echo >&2 "$(dirname $0): missing destination"
+    usage
     exit 1
 fi
 
-exec rsync -rv \
+optCrimeDBHost=$1
+
+rsync -rv \
     --exclude=/.git \
     --exclude=/solr/crime/data \
-    $(dirname $0)/.. $1
+    $(dirname $0)/.. $optCrimeDBHost:$optCrimeDBDir || \
+    die "failed to rsync"
+
+if [[ -n $optRestartHapi ]] ; then
+    ssh $optCrimeDBHost 'sv restart /etc/service/hapi' || \
+        die "failed to restart Hapi"
+fi
