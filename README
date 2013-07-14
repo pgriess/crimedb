@@ -1,3 +1,10 @@
+o TODO
+
+    . Put code on GitHub
+    . Google analytics
+    . Access logging in Hapi
+    . Filter out coordinates that we couldn't translate
+
 o Interesting data sources
 
     . http://www.slmpd.org/Crimereports.shtml
