@@ -4,7 +4,8 @@
 
 optRestartHapi=
 optCrimeDBDir=/opt/crimedb
-optCrimeDBHost=
+optCrimeDBUser=root
+optCrimeDBHost=www.crimedb.org
 
 log() {
     echo >&2 "$(basename $0): $@"
@@ -17,7 +18,7 @@ die() {
 
 usage() {
     cat <<EOF
-usage: $(basename $0) [options] <destination>
+usage: $(basename $0) [options]
 
 Push CrimeDB to the given destination, which should be a string of the form
 [<user>@]<hostname>.
@@ -26,6 +27,8 @@ Options:
   -d <dir>                    push to the given directory on the destination
                               host (default: $optCrimeDBDir)
   -h                          display help
+  -H <host>                   push to the given host (default: $optCrimeDBHost)
+  -l <login>                  push as the given user (default: $optCrimeDBUser)
   -r                          restart Hapi (default: don't restart)
 EOF
 }
@@ -49,18 +52,14 @@ done
 
 shift $(($OPTIND - 1))
 
-if [[ $# -ne 1 ]] ; then
-    echo >&2 "$(dirname $0): missing destination"
-    usage
-    exit 1
+if [[ $# -ne 0 ]] ; then
+    echo >&2 "$(dirname $0): skipping superfluous arguments: $@"
 fi
-
-optCrimeDBHost=$1
 
 rsync -rv \
     --exclude=/.git \
     --exclude=/solr/crime/data \
-    $(dirname $0)/.. $optCrimeDBHost:$optCrimeDBDir || \
+    $(dirname $0)/.. $optCrimeDBUser@$optCrimeDBHost:$optCrimeDBDir || \
     die "failed to rsync"
 
 if [[ -n $optRestartHapi ]] ; then
