@@ -1,7 +1,6 @@
 o TODO
 
     . Put code on GitHub
-    . Google analytics
     . Access logging in Hapi
     . Filter out coordinates that we couldn't translate
 
