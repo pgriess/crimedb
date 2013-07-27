@@ -157,6 +157,19 @@ var server = hapi.createServer('0.0.0.0', 8888, {
 });
 server.route([
     { path: '/crimes', method: 'GET', handler: api_handler },
+    { path: '/viz', method: 'GET', handler: { file: 'viz.html' } },
     { path: '/', method: 'GET', handler: { file: 'index.html' } },
 ]);
+server.pack.require(
+    'good',
+    {
+        subscribers: { console: ['request', 'log', 'ops'] },
+        extendedRequests: true,
+    },
+    function(err) {
+        if (err) {
+            throw err;
+        }
+    }
+);
 server.start();

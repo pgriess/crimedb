@@ -1,0 +1,91 @@
+<html>
+    <head>
+        <title>CrimeDB - Visualization</title>
+
+        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+        <script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+        <script type="text/javascript" src="http://maps.stamen.com/js/tile.stamen.js?v1.2.3"></script>
+
+        <style type="text/css">
+            #map {
+                height: 80%;
+            }
+        </style>
+
+        <script type="text/javascript">
+            var GRID_SIZE = 0.01;
+            var CITY_HALL = [38.627047, -90.199192];
+
+            $(document).ready(function() {
+                var gridColor = function (numCrimes) {
+                    var COLORS = [
+                        '#000000',
+                        '#0000ff',
+                        '#00ff00',
+                        '#00ffff',
+                        '#ff0000',
+                        '#ff00ff',
+                        '#ffff00',
+                        '#ffffff',
+                    ];
+                    return COLORS[Math.floor(Math.random() * COLORS.length)];
+                };
+
+                var map = L.map('map')
+                    .setView(CITY_HALL, 14)
+                    .addLayer(new L.StamenTileLayer('toner-lite'));
+                var bounds = map.getBounds();
+                $.getJSON('http://api.crimedb.org/crimes?location=[' +
+                    bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
+                    bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']',
+                    function (crimeData) {
+                        /* Construct a data grid for the map, initialized to 0 */
+                        var width = Math.ceil(
+                            Math.abs(bounds.getEast() - bounds.getWest()) /
+                                GRID_SIZE);
+                        var height = Math.ceil(
+                            Math.abs(bounds.getNorth() - bounds.getSouth()) /
+                                GRID_SIZE);
+                        var dataGrid = new Array(width);
+                        for (var i = 0; i < width; ++i) {
+                            dataGrid[i] = new Array(height);
+                            for (var ii = 0; ii < height; ++ii) {
+                                dataGrid[i][ii] = 0;
+                            }
+                        }
+
+                        /* Fill crime data into the grid */
+                        crimeData.results.forEach(function(c) {
+                            var x = Math.floor(
+                                Math.abs(c.location.coordinates[1] - bounds.getWest()) /
+                                    GRID_SIZE);
+                            var y = Math.floor(
+                                Math.abs(c.location.coordinates[0] - bounds.getSouth()) /
+                                    GRID_SIZE);
+                            ++dataGrid[x][y];
+                        });
+
+                        /* Render the grid */
+                        for (var x = 0; x < dataGrid.length; ++x) {
+                            for (var y = 0; y < dataGrid[x].length; ++y) {
+                                var r = L.rectangle([
+                                    [bounds.getSouth() + y * GRID_SIZE, bounds.getWest() + x * GRID_SIZE],
+                                    [bounds.getSouth() + (y + 1) * GRID_SIZE, bounds.getWest() + (x + 1) * GRID_SIZE]],
+                                    {
+                                        color: gridColor(dataGrid[x][y]),
+                                        stroke: false,
+                                    })
+                                    .addTo(map);
+                            }
+                        }
+                    }
+                );
+            });
+        </script>
+    </head>
+
+    <body>
+        <div id="map"/>
+    </body>
+</html>
