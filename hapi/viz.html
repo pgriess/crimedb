@@ -32,55 +32,47 @@
                     return COLORS[Math.floor(Math.random() * COLORS.length)];
                 };
 
-                var map = L.map('map')
-                    .setView(CITY_HALL, 14)
-                    .addLayer(new L.StamenTileLayer('toner-lite'));
-                var bounds = map.getBounds();
-                $.getJSON('http://api.crimedb.org/crimes?location=[' +
-                    bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
-                    bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']',
-                    function (crimeData) {
-                        /* Construct a data grid for the map, initialized to 0 */
-                        var width = Math.ceil(
-                            Math.abs(bounds.getEast() - bounds.getWest()) /
-                                GRID_SIZE);
-                        var height = Math.ceil(
-                            Math.abs(bounds.getNorth() - bounds.getSouth()) /
-                                GRID_SIZE);
-                        var dataGrid = new Array(width);
-                        for (var i = 0; i < width; ++i) {
-                            dataGrid[i] = new Array(height);
-                            for (var ii = 0; ii < height; ++ii) {
-                                dataGrid[i][ii] = 0;
+                var crimeLayer = null;
+                var drawGrid = function() {
+                    var bounds = map.getBounds();
+                    $.getJSON('http://api.crimedb.org/crimes?location=[' +
+                        bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
+                        bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']',
+                        function (crimeData) {
+                            if (crimeLayer) {
+                                map.removeLayer(crimeLayer);
                             }
-                        }
 
-                        /* Fill crime data into the grid */
-                        crimeData.results.forEach(function(c) {
-                            var x = Math.floor(
-                                Math.abs(c.location.coordinates[1] - bounds.getWest()) /
-                                    GRID_SIZE);
-                            var y = Math.floor(
-                                Math.abs(c.location.coordinates[0] - bounds.getSouth()) /
-                                    GRID_SIZE);
-                            ++dataGrid[x][y];
-                        });
-
-                        /* Render the grid */
-                        for (var x = 0; x < dataGrid.length; ++x) {
-                            for (var y = 0; y < dataGrid[x].length; ++y) {
-                                var r = L.rectangle([
-                                    [bounds.getSouth() + y * GRID_SIZE, bounds.getWest() + x * GRID_SIZE],
-                                    [bounds.getSouth() + (y + 1) * GRID_SIZE, bounds.getWest() + (x + 1) * GRID_SIZE]],
-                                    {
-                                        color: gridColor(dataGrid[x][y]),
-                                        stroke: false,
-                                    })
-                                    .addTo(map);
-                            }
+                            crimeLayer = L.geoJson(
+                                crimeData.results.map(function(c) {
+                                    return {
+                                        type: 'Feature',
+                                        geometry: {
+                                            type: 'Point',
+                                            coordinates: [
+                                                // XXX: We shouldn't need to reverse these here, but it
+                                                //      seems that CrimeDB and Leaflet disagree about the
+                                                //      order of here. The GeoJSON spec dictates [lon, lat].
+                                                c.location.coordinates[1],
+                                                c.location.coordinates[0]
+                                            ]
+                                        }
+                                    };
+                                })
+                            );
+                            map.addLayer(crimeLayer);
                         }
-                    }
-                );
+                    );
+                };
+
+                var map = L.map('map');
+                map.on('load', drawGrid)
+                    .on('viewreset', drawGrid)
+                    .on('zoomend', drawGrid)
+                    .on('moveend', drawGrid)
+                    .on('resize', drawGrid);
+                map.addLayer(new L.StamenTileLayer('toner-lite'))
+                    .setView(CITY_HALL, 14);
             });
         </script>
     </head>
