@@ -39,8 +39,13 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
                     return;
                 }
 
+                /*
+                 * This must be formatted such that Solr recognizes it as a (lon, lat)
+                 * pair. See http://wiki.apache.org/solr/SolrAdaptersForLuceneSpatial4#Indexing
+                 * for details.
+                 */
                 odoc['location'] =
-                    gjo.coordinates[0] + ',' + gjo.coordinates[1];
+                    gjo.coordinates[0] + ' ' + gjo.coordinates[1];
 
                 insertQueue.push([odoc, callback]);
                 checkFlush();
