@@ -63,6 +63,6 @@ rsync -rv \
     die "failed to rsync"
 
 if [[ -n $optRestartHapi ]] ; then
-    ssh $optCrimeDBHost 'sv restart /etc/service/hapi' || \
+    ssh $optCrimeDBUser@$optCrimeDBHost 'sv restart /etc/service/hapi' || \
         die "failed to restart Hapi"
 fi
