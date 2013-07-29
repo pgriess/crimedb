@@ -20,16 +20,17 @@
             $(document).ready(function() {
                 var gridColor = function (numCrimes) {
                     var COLORS = [
-                        '#000000',
                         '#0000ff',
-                        '#00ff00',
-                        '#00ffff',
-                        '#ff0000',
-                        '#ff00ff',
-                        '#ffff00',
-                        '#ffffff',
+                        '#2000e0',
+                        '#4000c0',
+                        '#6000a0',
+                        '#800080',
+                        '#a00060',
+                        '#c00040',
+                        '#e00020',
+                        '#ff0000'
                     ];
-                    return COLORS[Math.floor(Math.random() * COLORS.length)];
+                    return COLORS[Math.min(Math.floor(numCrimes / 3), COLORS.length - 1)];
                 };
 
                 var crimeLayer = null;
