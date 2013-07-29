@@ -30,7 +30,8 @@
                         '#e00020',
                         '#ff0000'
                     ];
-                    return COLORS[Math.min(Math.floor(numCrimes / 3), COLORS.length - 1)];
+                    console.log(numCrimes);
+                    return COLORS[Math.min(Math.floor(numCrimes / 10), COLORS.length - 1)];
                 };
 
                 var crimeLayer = null;
@@ -40,7 +41,8 @@
                         '?location=[' +
                             bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
                             bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']' +
-                        '&limit=1000000',
+                        '&limit=1000000' +
+                        '&time=[1356998400:1388534400]',
                         function (crimeData) {
                             if (crimeLayer) {
                                 map.removeLayer(crimeLayer);
