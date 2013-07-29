@@ -40,7 +40,7 @@
                         '?location=[' +
                             bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
                             bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']' +
-                        '&limit=1000',
+                        '&limit=1000000',
                         function (crimeData) {
                             if (crimeLayer) {
                                 map.removeLayer(crimeLayer);
