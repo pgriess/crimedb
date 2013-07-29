@@ -36,9 +36,11 @@
                 var crimeLayer = null;
                 var drawGrid = function() {
                     var bounds = map.getBounds();
-                    $.getJSON('http://api.crimedb.org/crimes?location=[' +
-                        bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
-                        bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']',
+                    $.getJSON('http://api.crimedb.org/crimes' +
+                        '?location=[' +
+                            bounds.getNorthWest().lat + ',' + bounds.getNorthWest().lng + ':' +
+                            bounds.getSouthEast().lat + ',' + bounds.getSouthEast().lng + ']' +
+                        '&limit=1000',
                         function (crimeData) {
                             if (crimeLayer) {
                                 map.removeLayer(crimeLayer);
