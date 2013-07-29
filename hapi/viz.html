@@ -43,24 +43,70 @@
                                 map.removeLayer(crimeLayer);
                             }
 
-                            crimeLayer = L.geoJson(
-                                crimeData.results.map(function(c) {
-                                    return {
-                                        type: 'Feature',
-                                        geometry: {
-                                            type: 'Point',
-                                            coordinates: [
-                                                // XXX: We shouldn't need to reverse these here, but it
-                                                //      seems that CrimeDB and Leaflet disagree about the
-                                                //      order of here. The GeoJSON spec dictates [lon, lat].
-                                                c.location.coordinates[1],
-                                                c.location.coordinates[0]
-                                            ]
-                                        }
-                                    };
-                                })
+                            /* Construct a data grid for the map, initialized to 0 */
+                            var lonSize = Math.ceil(
+                                Math.abs(bounds.getEast() - bounds.getWest()) /
+                                    GRID_SIZE);
+                            var latSize = Math.ceil(
+                                Math.abs(bounds.getNorth() - bounds.getSouth()) /
+                                    GRID_SIZE);
+                            var dataGrid = new Array(lonSize);
+                            for (var i = 0; i < lonSize; ++i) {
+                                dataGrid[i] = new Array(latSize);
+                                for (var ii = 0; ii < latSize; ++ii) {
+                                    dataGrid[i][ii] = 0;
+                                }
+                            }
+
+                            /* Fill crime data into the grid */
+                            crimeData.results.forEach(function(c) {
+                                var x = Math.floor(
+                                    Math.abs(c.location.coordinates[0] - bounds.getWest()) /
+                                        GRID_SIZE);
+                                var y = Math.floor(
+                                    Math.abs(c.location.coordinates[1] - bounds.getSouth()) /
+                                        GRID_SIZE);
+                                ++dataGrid[x][y];
+                            });
+
+                            crimeGJData = dataGrid.reduce(
+                                function(gj, cdColumn, x) {
+                                    return gj.concat(
+                                        cdColumn.reduce(
+                                            function(gj, cd, y) {
+                                                return gj.concat({
+                                                    type: 'Feature',
+                                                    properties: {
+                                                        crimeCount: dataGrid[x][y]
+                                                    },
+                                                    geometry: {
+                                                        type: 'Polygon',
+                                                        coordinates: [[
+                                                            [bounds.getWest() + x * GRID_SIZE, bounds.getSouth() + y * GRID_SIZE],
+                                                            [bounds.getWest() + x * GRID_SIZE, bounds.getSouth() + (y + 1) * GRID_SIZE],
+                                                            [bounds.getWest() + (x + 1) * GRID_SIZE, bounds.getSouth() + (y + 1) * GRID_SIZE],
+                                                            [bounds.getWest() + (x + 1) * GRID_SIZE, bounds.getSouth() + y * GRID_SIZE],
+                                                            [bounds.getWest() + x * GRID_SIZE, bounds.getSouth() + y * GRID_SIZE],
+                                                        ]]
+                                                    },
+                                                });
+                                            },
+                                            []
+                                        )
+                                    );
+                                },
+                                []
                             );
-                            map.addLayer(crimeLayer);
+
+                            crimeLayer = L.geoJson(crimeGJData, {
+                                style: function (f) {
+                                    return {
+                                        color: gridColor(f.properties.crimeCount),
+                                        stroke: false
+                                    };
+                                }
+                            });
+                            crimeLayer.addTo(map);
                         }
                     );
                 };
