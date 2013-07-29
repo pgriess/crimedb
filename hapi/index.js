@@ -60,7 +60,7 @@ var api_handler = function(req) {
     };
 
     if ('limit' in req.query) {
-        solrQuery.rows = Math.min(req.query.limit, 1000);
+        solrQuery.rows = Math.min(req.query.limit, 1000000);
     }
 
     if ('time' in req.query) {
