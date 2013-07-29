@@ -69,7 +69,7 @@ var api_handler = function(req) {
             req.reply(
                 JSON.stringify({
                     title: 'Invalid query parameter',
-                    problemType: 'http://localhost:8888/errors/Invalid_query_parameter'}))
+                    problemType: 'http://' + req.info.host + '/errors/InternalError'}))
                 .code(500)
                 .type('application/api-problem+json');
             return;
@@ -92,7 +92,7 @@ var api_handler = function(req) {
             req.reply(
                 JSON.stringify({
                     title: 'Invalid query parameter',
-                    problemType: 'http://localhost:8888/errors/Invalid_query_parameter'}))
+                    problemType: 'http://' + req.info.host + '/errors/InternalError'}))
                 .code(500)
                 .type('application/api-problem+json');
             return;
@@ -139,7 +139,7 @@ var api_handler = function(req) {
                 req.reply(
                     JSON.stringify({
                         title: 'Internal error',
-                        problemType: 'http://localhost:8888/errors/Internal_error'}))
+                        problemType: 'http://' + req.info.host + '/errors/InternalError'}))
                     .code(500)
                     .type('application/api-problem+json');
                 return;
@@ -160,10 +160,27 @@ var server = hapi.createServer('0.0.0.0', 8888, {
     cors: true,
     files: { relativeTo: 'routes' },
 });
-server.route([
-    { path: '/crimes', method: 'GET', handler: api_handler },
-    { path: '/viz', method: 'GET', handler: { file: 'viz.html' } },
-    { path: '/', method: 'GET', handler: { file: 'index.html' } },
+server.route([{
+        path: '/crimes',
+        method: 'GET',
+        handler: api_handler,
+    }, {
+        path: '/errors/{error}',
+        method: 'GET',
+        handler: {
+            file: function(req) {
+                return 'static/errors/' + req.params.error + '.html';
+            }
+        }
+    }, {
+        path: '/viz',
+        method: 'GET',
+        handler: { file: 'static/viz.html' },
+    }, {
+        path: '/',
+        method: 'GET',
+        handler: { file: 'static/index.html' },
+    }
 ]);
 server.pack.require(
     'good',

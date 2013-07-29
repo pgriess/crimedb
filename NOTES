@@ -7,7 +7,6 @@ o TODO
     . Don't render polygons for areas for which we have no data. Need to
       differentiate this no data from no crime.
     . Error pages for API errors need to get built.
-    . Stop referencing localhost:8888 in Hapi code.
     . Cursor support
     . Cache in front of Solr/api. For the initial visualization/tooling we
       should get a pretty good hitrate, especially if we're normalizing queries
