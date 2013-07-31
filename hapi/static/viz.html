@@ -18,7 +18,7 @@
             var CITY_HALL = [38.627047, -90.199192];
 
             $(document).ready(function() {
-                var gridColor = function (numCrimes) {
+                var gridColor = function(numCrimes) {
                     var COLORS = [
                         '#0000ff',
                         '#2000e0',
@@ -31,6 +31,68 @@
                         '#ff0000'
                     ];
                     return COLORS[Math.min(Math.floor(numCrimes / 10), COLORS.length - 1)];
+                };
+
+                var crimeDataToGrid = function(mapBounds, crimeData) {
+                    /* Construct a data grid for the map, initialized to 0 */
+                    var lonSize = Math.ceil(
+                        Math.abs(mapBounds.getEast() - mapBounds.getWest()) /
+                            GRID_SIZE);
+                    var latSize = Math.ceil(
+                        Math.abs(mapBounds.getNorth() - mapBounds.getSouth()) /
+                            GRID_SIZE);
+                    var dataGrid = new Array(lonSize);
+                    for (var i = 0; i < lonSize + 1; ++i) {
+                        dataGrid[i] = new Array(latSize);
+                        for (var ii = 0; ii < latSize + 1; ++ii) {
+                            dataGrid[i][ii] = 0;
+                        }
+                    }
+
+                    /* Fill crime data into the grid */
+                    var westBounds = Math.floor(mapBounds.getWest() / GRID_SIZE) * GRID_SIZE;
+                    var southBounds = Math.floor(mapBounds.getSouth() / GRID_SIZE) * GRID_SIZE;
+                    crimeData.results.forEach(function(c) {
+                        var x = Math.floor((c.location.coordinates[0] - westBounds) / GRID_SIZE);
+                        var y = Math.floor((c.location.coordinates[1] - southBounds) / GRID_SIZE);
+                        ++dataGrid[x][y];
+                    });
+
+                    return dataGrid;
+                };
+
+                var crimeGridToGeoJson = function(mapBounds, crimeDataGrid) {
+                    var w = Math.floor(mapBounds.getWest() / GRID_SIZE) * GRID_SIZE;
+                    var s = Math.floor(mapBounds.getSouth() / GRID_SIZE) * GRID_SIZE;
+
+                    return crimeDataGrid.reduce(
+                        function(gj, cdColumn, x) {
+                            return gj.concat(
+                                cdColumn.reduce(
+                                    function(gj, cd, y) {
+                                        return gj.concat({
+                                            type: 'Feature',
+                                            properties: {
+                                                crimeCount: crimeDataGrid[x][y]
+                                            },
+                                            geometry: {
+                                                type: 'Polygon',
+                                                coordinates: [[
+                                                    [w + x * GRID_SIZE, s + y * GRID_SIZE],
+                                                    [w + x * GRID_SIZE, s + (y + 1) * GRID_SIZE],
+                                                    [w + (x + 1) * GRID_SIZE, s + (y + 1) * GRID_SIZE],
+                                                    [w + (x + 1) * GRID_SIZE, s + y * GRID_SIZE],
+                                                    [w + x * GRID_SIZE, s + y * GRID_SIZE],
+                                                ]]
+                                            },
+                                        });
+                                    },
+                                    []
+                                )
+                            );
+                        },
+                        []
+                    );
                 };
 
                 var crimeLayer = null;
@@ -47,62 +109,10 @@
                                 map.removeLayer(crimeLayer);
                             }
 
-                            /* Construct a data grid for the map, initialized to 0 */
-                            var lonSize = Math.ceil(
-                                Math.abs(bounds.getEast() - bounds.getWest()) /
-                                    GRID_SIZE);
-                            var latSize = Math.ceil(
-                                Math.abs(bounds.getNorth() - bounds.getSouth()) /
-                                    GRID_SIZE);
-                            var dataGrid = new Array(lonSize);
-                            for (var i = 0; i < lonSize; ++i) {
-                                dataGrid[i] = new Array(latSize);
-                                for (var ii = 0; ii < latSize; ++ii) {
-                                    dataGrid[i][ii] = 0;
-                                }
-                            }
+                            crimeDataGrid = crimeDataToGrid(bounds, crimeData);
+                            crimeGeoJson = crimeGridToGeoJson(bounds, crimeDataGrid);
 
-                            /* Fill crime data into the grid */
-                            crimeData.results.forEach(function(c) {
-                                var x = Math.floor(
-                                    Math.abs(c.location.coordinates[0] - bounds.getWest()) /
-                                        GRID_SIZE);
-                                var y = Math.floor(
-                                    Math.abs(c.location.coordinates[1] - bounds.getSouth()) /
-                                        GRID_SIZE);
-                                ++dataGrid[x][y];
-                            });
-
-                            crimeGJData = dataGrid.reduce(
-                                function(gj, cdColumn, x) {
-                                    return gj.concat(
-                                        cdColumn.reduce(
-                                            function(gj, cd, y) {
-                                                return gj.concat({
-                                                    type: 'Feature',
-                                                    properties: {
-                                                        crimeCount: dataGrid[x][y]
-                                                    },
-                                                    geometry: {
-                                                        type: 'Polygon',
-                                                        coordinates: [[
-                                                            [bounds.getWest() + x * GRID_SIZE, bounds.getSouth() + y * GRID_SIZE],
-                                                            [bounds.getWest() + x * GRID_SIZE, bounds.getSouth() + (y + 1) * GRID_SIZE],
-                                                            [bounds.getWest() + (x + 1) * GRID_SIZE, bounds.getSouth() + (y + 1) * GRID_SIZE],
-                                                            [bounds.getWest() + (x + 1) * GRID_SIZE, bounds.getSouth() + y * GRID_SIZE],
-                                                            [bounds.getWest() + x * GRID_SIZE, bounds.getSouth() + y * GRID_SIZE],
-                                                        ]]
-                                                    },
-                                                });
-                                            },
-                                            []
-                                        )
-                                    );
-                                },
-                                []
-                            );
-
-                            crimeLayer = L.geoJson(crimeGJData, {
+                            crimeLayer = L.geoJson(crimeGeoJson, {
                                 style: function (f) {
                                     return {
                                         color: gridColor(f.properties.crimeCount),

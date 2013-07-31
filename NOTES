@@ -1,9 +1,6 @@
 o TODO
 
     . Filter out coordinates that we couldn't translate
-    . Snap-to-grid when rendering crime density. If we always use the western
-      edge as the beginning of the grid, then panning even slightly uses a
-      different/shifted grid and renders different results due to bucketing.
     . Don't render polygons for areas for which we have no data. Need to
       differentiate this no data from no crime.
     . Error pages for API errors need to get built.
