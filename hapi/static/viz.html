@@ -15,22 +15,47 @@
 
         <script type="text/javascript">
             var GRID_SIZE = 0.005;
+            var GRID_COLORS = [
+                '#0000ff',
+                '#4000c0',
+                '#800080',
+                '#c00040',
+                '#ff0000'
+            ];
             var CITY_HALL = [38.627047, -90.199192];
 
             $(document).ready(function() {
-                var gridColor = function(numCrimes) {
-                    var COLORS = [
-                        '#0000ff',
-                        '#2000e0',
-                        '#4000c0',
-                        '#6000a0',
-                        '#800080',
-                        '#a00060',
-                        '#c00040',
-                        '#e00020',
-                        '#ff0000'
-                    ];
-                    return COLORS[Math.min(Math.floor(numCrimes / 10), COLORS.length - 1)];
+                var computeGridColorBands = function(crimeGrid, numBands) {
+                    /* Flatten data grid into a sorted array */
+                    var flatData = crimeGrid.reduce(
+                        function(acc, v) { return acc.concat(v); },
+                        []
+                    );
+                    flatData.sort(function(a, b) { return a - b; });
+
+                    /* Compute bands. Be careful not to overrun flatData. */
+                    var bandSize = flatData.length / numBands;
+                    var colorBands = new Array(numBands + 1);
+                    for (var i = 0; i < colorBands.length; ++i) {
+                        colorBands[i] = flatData[
+                            Math.min(
+                                Math.round(i * bandSize),
+                                flatData.length - 1)];
+                    }
+                  
+                    return colorBands;
+                };
+
+                var gridColor = function(colorBands, numCrimes) {
+                    /*
+                     * colorBands[i] < val <= colorBands[i + 1] means the
+                     * value needs to get colored with GRID_COLORS[i]
+                     */
+                    for (var i = 1; i < colorBands.length; ++i) {
+                        if (numCrimes <= colorBands[i]) {
+                            return GRID_COLORS[i - 1];
+                        }
+                    }
                 };
 
                 var crimeDataToGrid = function(mapBounds, crimeData) {
@@ -95,7 +120,7 @@
                     );
                 };
 
-                var crimeLayer = null;
+                var currentLayer = null;
                 var drawGrid = function() {
                     var bounds = map.getBounds();
                     $.getJSON('http://api.crimedb.org/crimes' +
@@ -105,22 +130,25 @@
                         '&limit=1000000' +
                         '&time=[1356998400:1388534400]',
                         function (crimeData) {
-                            if (crimeLayer) {
-                                map.removeLayer(crimeLayer);
+                            if (currentLayer) {
+                                map.removeLayer(currentLayer);
                             }
 
-                            crimeDataGrid = crimeDataToGrid(bounds, crimeData);
-                            crimeGeoJson = crimeGridToGeoJson(bounds, crimeDataGrid);
+                            var crimeDataGrid = crimeDataToGrid(bounds, crimeData);
+                            var crimeGeoJson = crimeGridToGeoJson(bounds, crimeDataGrid);
+                            var colorBands = computeGridColorBands(crimeDataGrid, GRID_COLORS.length);
 
-                            crimeLayer = L.geoJson(crimeGeoJson, {
+                            currentLayer = L.geoJson(crimeGeoJson, {
                                 style: function (f) {
                                     return {
-                                        color: gridColor(f.properties.crimeCount),
+                                        color: gridColor(
+                                            colorBands,
+                                            f.properties.crimeCount),
                                         stroke: false
                                     };
                                 }
                             });
-                            crimeLayer.addTo(map);
+                            currentLayer.addTo(map);
                         }
                     );
                 };
