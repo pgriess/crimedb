@@ -49,6 +49,17 @@ var transformSolrDocument = (function() {
 
 var api_handler = function(req) {
 
+    /* Fail the request with our JSON formatting */
+    var failRequest = function(title, problemType) {
+        req.reply(
+            JSON.stringify({
+                title: title,
+                problemType: 'http://' + req.info.host + '/errors/' +
+                    problemType}))
+            .code(500)
+            .type('application/api-problem+json');
+    }
+
     /*
      * Apply query parameters from the request
      *
@@ -66,12 +77,7 @@ var api_handler = function(req) {
     if ('time' in req.query) {
         var arr = /^\[(\d+):(\d+)\]$/.exec(req.query.time);
         if (!arr) {
-            req.reply(
-                JSON.stringify({
-                    title: 'Invalid query parameter',
-                    problemType: 'http://' + req.info.host + '/errors/InternalError'}))
-                .code(500)
-                .type('application/api-problem+json');
+            failRequest('Invalid query parameter', 'InternalError');
             return;
         }
 
@@ -89,12 +95,7 @@ var api_handler = function(req) {
     if ('location' in req.query) {
         var arr = /^\[(-?[\d\.]+)\s*,\s*(-?[\d\.]+):(-?[\d\.]+)\s*,\s*(-?[\d\.]+)\]$/.exec(req.query.location);
         if (!arr) {
-            req.reply(
-                JSON.stringify({
-                    title: 'Invalid query parameter',
-                    problemType: 'http://' + req.info.host + '/errors/InternalError'}))
-                .code(500)
-                .type('application/api-problem+json');
+            failRequest('Invalid query parameter', 'InternalError');
             return;
         }
 
@@ -133,15 +134,7 @@ var api_handler = function(req) {
         headers: {'Accept': 'application/json'}},
         function(err, resp, body) {
             if (err || 'error' in body) {
-                // XXX: Generate an absolute URI for the current
-                //      hostname. Write handler for each of these pages
-                //      so that they're actually useful.
-                req.reply(
-                    JSON.stringify({
-                        title: 'Internal error',
-                        problemType: 'http://' + req.info.host + '/errors/InternalError'}))
-                    .code(500)
-                    .type('application/api-problem+json');
+                failRequest('Error talking to data store', 'InternalError');
                 return;
             }
 
