@@ -14,18 +14,22 @@
         </style>
 
         <script type="text/javascript">
-            var GRID_SIZE = 0.005;
+            var GRID_SIZE = 0.002;
+            // http://www.colorbrewer2.org/
             var GRID_COLORS = [
-                '#0000ff',
-                '#4000c0',
-                '#800080',
-                '#c00040',
-                '#ff0000'
+                '#3288BD',
+                '#66C2A5',
+                '#ABDDA4',
+                '#E6F598',
+                '#FEE08B',
+                '#FDAE61',
+                '#F46D43',
+                '#D53E4F',
             ];
             var CITY_HALL = [38.627047, -90.199192];
 
             $(document).ready(function() {
-                var computeGridColorBands = function(crimeGrid, numBands) {
+                var computePercentileColorBands = function(crimeGrid, numBands) {
                     /* Flatten data grid into a sorted array */
                     var flatData = crimeGrid.reduce(
                         function(acc, v) { return acc.concat(v); },
@@ -45,6 +49,28 @@
                   
                     return colorBands;
                 };
+
+                var computeLinearColorBands = function(crimeGrid, numBands) {
+                    /* Flatten data grid into a sorted array */
+                    var flatData = crimeGrid.reduce(
+                        function(acc, v) { return acc.concat(v); },
+                        []
+                    );
+                    flatData.sort(function(a, b) { return a - b; });
+
+                    /* Compute bands. Be careful not to overrun flatData. */
+                    var bandSize = flatData[flatData.length - 1] / numBands;
+                    var colorBands = new Array(numBands + 1);
+                    for (var i = 0; i < colorBands.length; ++i) {
+                        colorBands[i] = Math.min(
+                            Math.round(i * bandSize),
+                            flatData[flatData.length - 1]);
+                    }
+
+                    return colorBands;
+                };
+
+                var computeGridColorBands = computePercentileColorBands;
 
                 var gridColor = function(colorBands, numCrimes) {
                     /*
@@ -144,6 +170,7 @@
                                         color: gridColor(
                                             colorBands,
                                             f.properties.crimeCount),
+                                        fillOpacity: 0.4,
                                         stroke: false
                                     };
                                 }
