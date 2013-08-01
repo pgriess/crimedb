@@ -29,7 +29,11 @@
             var CITY_HALL = [38.627047, -90.199192];
 
             $(document).ready(function() {
-                var computePercentileColorBands = function(crimeGrid, numBands) {
+                var computePercentileColorBands = function(crimeGrid) {
+                    if (GRID_COLORS.length != 8) {
+                        throw Execption('Update percentile colors!');
+                    }
+
                     /* Flatten data grid into a sorted array */
                     var flatData = crimeGrid.reduce(
                         function(acc, v) { return acc.concat(v); },
@@ -37,40 +41,26 @@
                     );
                     flatData.sort(function(a, b) { return a - b; });
 
-                    /* Compute bands. Be careful not to overrun flatData. */
-                    var bandSize = flatData.length / numBands;
-                    var colorBands = new Array(numBands + 1);
-                    for (var i = 0; i < colorBands.length; ++i) {
-                        colorBands[i] = flatData[
-                            Math.min(
-                                Math.round(i * bandSize),
-                                flatData.length - 1)];
-                    }
-                  
-                    return colorBands;
-                };
-
-                var computeLinearColorBands = function(crimeGrid, numBands) {
-                    /* Flatten data grid into a sorted array */
-                    var flatData = crimeGrid.reduce(
-                        function(acc, v) { return acc.concat(v); },
-                        []
-                    );
-                    flatData.sort(function(a, b) { return a - b; });
-
-                    /* Compute bands. Be careful not to overrun flatData. */
-                    var bandSize = flatData[flatData.length - 1] / numBands;
-                    var colorBands = new Array(numBands + 1);
-                    for (var i = 0; i < colorBands.length; ++i) {
-                        colorBands[i] = Math.min(
-                            Math.round(i * bandSize),
-                            flatData[flatData.length - 1]);
-                    }
+                    /*
+                     * Compute bands. Be careful not to overrun flatData.
+                     *
+                     * These percentiles are totally made up. I kind of doubt
+                     * that it's important to be able to compute these for an
+                     * arbitrary number of color bands; 8 seems like plenty.
+                     */
+                    var colorBands = new Array(GRID_COLORS.length + 1);
+                    colorBands[0] = flatData[Math.round(flatData.length * 5 / 100)];
+                    colorBands[1] = flatData[Math.round(flatData.length * 10 / 100)];
+                    colorBands[2] = flatData[Math.round(flatData.length * 25 / 100)];
+                    colorBands[3] = flatData[Math.round(flatData.length * 50 / 100)];
+                    colorBands[4] = flatData[Math.round(flatData.length * 75 / 100)];
+                    colorBands[5] = flatData[Math.round(flatData.length * 90 / 100)];
+                    colorBands[6] = flatData[Math.round(flatData.length * 95 / 100)];
+                    colorBands[7] = flatData[Math.round(flatData.length * 99 / 100)];
+                    colorBands[GRID_COLORS.length] = flatData[flatData.length - 1];
 
                     return colorBands;
                 };
-
-                var computeGridColorBands = computePercentileColorBands;
 
                 var gridColor = function(colorBands, numCrimes) {
                     /*
@@ -162,7 +152,7 @@
 
                             var crimeDataGrid = crimeDataToGrid(bounds, crimeData);
                             var crimeGeoJson = crimeGridToGeoJson(bounds, crimeDataGrid);
-                            var colorBands = computeGridColorBands(crimeDataGrid, GRID_COLORS.length);
+                            var colorBands = computePercentileColorBands(crimeDataGrid);
 
                             currentLayer = L.geoJson(crimeGeoJson, {
                                 style: function (f) {
