@@ -95,7 +95,9 @@
                     var southBounds = Math.floor(mapBounds.getSouth() / GRID_SIZE) * GRID_SIZE;
                     crimeData.results.forEach(function(c) {
                         var x = Math.floor((c.location.coordinates[0] - westBounds) / GRID_SIZE);
+                        x = Math.min(Math.max(x, 0), dataGrid.length - 1);
                         var y = Math.floor((c.location.coordinates[1] - southBounds) / GRID_SIZE);
+                        y = Math.min(Math.max(y, 0), dataGrid[0].length - 1);
                         ++dataGrid[x][y];
                     });
 
