@@ -261,32 +261,11 @@
                     .on('resize', function() { drawGrid(map); });
                 map.addLayer(new L.StamenTileLayer('toner-lite'))
                     .setView(CITY_HALL, 14);
-
-                $('#submit-button')
-                    .button({label: 'Search'})
-                    .click(function() {
-                        var description = $('#search-text').val().trim();
-                        if (description.length > 0) {
-                            queryParams.description = description;
-                        } else {
-                            delete queryParams['description'];
-                        }
-
-                        drawGrid(map);
-                    });
             });
         </script>
     </head>
 
     <body>
         <div id="map"></div>
-        <div id="form">
-            <div style="float: right;">
-                <input type="button" style="width: 90px;" id="submit-button"/>
-            </div>
-            <div style="margin-right: 100px;">
-                <input type="text" style="width: 100%;" id="search-text"/>
-            </div>
-        </div>
     </body>
 </html>
