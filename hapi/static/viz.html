@@ -21,6 +21,22 @@
                 margin-left: auto;
                 margin-right: auto;
             }
+
+            .legend {
+                background: white;
+                opacity: 1.0;
+                padding: 5px;
+                margin: 5px;
+                border: 1px solid grey;
+            }
+
+            .legend .swatch {
+                height: 10px;
+                width: 10px;
+                margin: 3px;
+                float: left;
+                opacity: 0.4;
+            }
         </style>
 
         <script type="text/javascript">
@@ -40,6 +56,7 @@
             var QUERY_URL_BASE = 'http://api.crimedb.org/crimes';
 
             var currentLayer = null;
+            var legendLayer = null;
             var queryParams = {
                 limit: 1000000,
                 time: '[1356998400:1388534400]',
@@ -177,6 +194,11 @@
                             map.removeLayer(currentLayer);
                         }
 
+                        if (legendLayer) {
+                            map.removeLayer(legendLayer);
+                            $('.legend').remove();
+                        }
+
                         var crimeDataGrid = crimeDataToGrid(bounds, crimeData);
                         var crimeGeoJson = crimeGridToGeoJson(bounds, crimeDataGrid);
                         var colorBands = computePercentileColorBands(crimeDataGrid);
@@ -193,6 +215,30 @@
                             }
                         });
                         currentLayer.addTo(map);
+
+                        legendLayer = L.control({position: 'bottomright'});
+                        legendLayer.onAdd = function(map) {
+                            var div = L.DomUtil.create('div', 'legend');
+                            for (var i = GRID_COLORS.length - 1; i >= 0; --i) {
+                                var text = '';
+
+                                if (i == GRID_COLORS.length - 1) {
+                                    text = 'above ' + colorBands[i];
+                                } else if (i > 0) {
+                                    text = colorBands[i - 1] + ' - ' + colorBands[i];
+                                } else {
+                                    text = 'below ' + colorBands[i];
+                                }
+
+                                div.innerHTML +=
+                                    '<i class="swatch" ' +
+                                        'style="background: ' +
+                                        GRID_COLORS[i] +
+                                        ';"></i>' + text + '<br/>';
+                            }
+                            return div;
+                        };
+                        legendLayer.addTo(map);
                     }
                 );
             };
