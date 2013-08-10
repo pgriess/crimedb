@@ -1,6 +1,6 @@
 <html>
     <head>
-        <title>CrimeDB - Visualization</title>
+        <title>CrimeDB - St. Louis</title>
 
         <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -9,18 +9,17 @@
         <script type="text/javascript" src="http://maps.stamen.com/js/tile.stamen.js?v1.2.3"></script>
 
         <style type="text/css">
-            #map {
-                height: 60%;
-                width: 80%;
-                margin-left: auto;
-                margin-right: auto;
-                border: 2px solid grey;
+            body {
+                font-family: helvetica;
+                margin-left: 10%;
+                margin-right: 10%;
             }
 
-            #form {
-                width: 80%;
-                margin-left: auto;
-                margin-right: auto;
+            #map {
+                height: 90%;
+                width: 100%;
+                border: 2px solid grey;
+                clear: both;
             }
 
             .legend {
@@ -232,11 +231,11 @@
                                 var text = '';
 
                                 if (i == GRID_COLORS.length - 1) {
-                                    text = 'above ' + colorBands[i];
+                                    text = colorBands[i] + '+';
                                 } else if (i > 0) {
                                     text = colorBands[i - 1] + ' - ' + colorBands[i];
                                 } else {
-                                    text = 'below ' + colorBands[i];
+                                    text = '0 - ' + colorBands[i];
                                 }
 
                                 div.innerHTML +=
@@ -266,6 +265,36 @@
     </head>
 
     <body>
-        <div id="map"></div>
+        <div>
+            <div>
+                <span style="float: right; margin-bottom: 10px;">
+                    <a href="#help">Help</a> |
+                    <a href="#about">About</a>
+                </span>
+            </div>
+            <div id="map"></div>
+        </div>
+        <h3 id="help">Help</h3>
+        <p>
+        This map shows crime frequency in St. Louis City from January 1, 2013
+        through May 31, 2013.
+        </p>
+
+        <p>
+        Each square on the grid is colored according to how many crimes were
+        reported to have occurred there. The legend in the bottom right of the
+        map can be used to interpret these colors.
+        </p>
+        <h3 id="about">About</h3>
+        <p>
+        Data on crimes from the <a href="http://www.slmpd.org/">St. Louis
+        Metropolitan Police Department</a>, and retrieved using the <a
+        href="/">CrimeDB</a> API.
+        </p>
+
+        <p>
+        Please send questions or comments to
+        <a href="mailto:info@crimedb.org">info@crimedb.org</a>.
+        </p>
     </body>
 </html>
