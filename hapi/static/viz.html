@@ -57,6 +57,7 @@
 
             var currentLayer = null;
             var legendLayer = null;
+            var currentBounds = null;
             var queryParams = {
                 limit: 1000000,
                 time: '[1356998400:1388534400]',
@@ -173,6 +174,13 @@
 
             var drawGrid = function(map) {
                 var bounds = map.getBounds();
+
+                // Nothing to do
+                if (bounds.equals(currentBounds)) {
+                    return;
+                }
+
+                currentBounds = bounds;
 
                 // Constrain query results to the location currently visible on the map
                 queryParams.location = '[' +
