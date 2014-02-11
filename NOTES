@@ -22,9 +22,11 @@ o Interesting data sources
 
 o Using Solr4
 
-    . The Solr context is solr-4.3.0 based on the .war in webapps/
+    . The base URL for API requests is http://localhost:8080/solr-4.3.0/crime
 
-    . The CrimeDB index is hosted at /crime
+            . The Solr context is solr-4.3.0 based on the .war in webapps/
+
+            . The CrimeDB index is hosted at /crime
 
     . Adding documents
 
@@ -43,6 +45,8 @@ o Using Solr4
         . Hit the /crime/query endpoint with a GET and a ?q=<query> to search
           by the given query. This can't be empty (which will return no results).
 
+        . To query all results, use '?q=*:*'
+
         . Geo points can be queried using syntax here:
 
             http://wiki.apache.org/solr/SolrAdaptersForLuceneSpatial4
@@ -58,10 +62,29 @@ o EC2
 
     . Built NodeJS RPM via https://github.com/kazuhisya/nodejs-rpm
 
-    . Downloaded Jetty 9.x and dumped it in /opt/jetty
+    . Downloaded Jetty 9.0.x and dumped it in /opt/jetty
 
     . Build proj-4.8 from source. Didn't use pre-built RPM because couldn't
       find one with NAD support
 
         . Use http://download.osgeo.org/proj/proj-datumgrid-1.5.zip when
           building Proj (unzip and look at README.NADUS).
+
+o Mac OS X
+
+    . Install NodeJS via MacPorts
+
+    . Install Proj-4.8 via MacPorts
+
+    . Download Jetty 9.0.x; set $JETTY_HOME to its un-packed location
+
+      Note that Jetty 9.1.x and above requires changes to start.ini, so stick
+      with this for now to keep the configuration the same as what we use for
+      CentOS.
+
+    . Make sure that Java 7 is installed and in your $PATH
+
+        $ java -version
+        java version "1.7.0_51"
+        Java(TM) SE Runtime Environment (build 1.7.0_51-b13)
+        Java HotSpot(TM) 64-Bit Server VM (build 24.51-b03, mixed mode)
