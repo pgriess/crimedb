@@ -31,6 +31,12 @@ var downloadFiles = function(files, callback) {
     var formFields = files[fileName];
     delete files[fileName];
 
+    /* Skip files that we've already downloaded */
+    if (fs.existsSync(fileName)) {
+        downloadFiles(files, callback);
+        return;
+    }
+
     request.post(
         postOptions(formFields),
         function(err, resp) {
