@@ -106,9 +106,22 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
             var odoc = {};
             odoc['description'] = idoc['Description'];
 
-            odoc['date'] = crimedb_common.formatDateForSolr(
-                strptime(idoc['Date Occured'], '%m/%d/%Y %H:%M')
-            );
+            var DATE_FIELD_NAMES = [
+                'Date Occurred',
+                'Date Occur'
+            ];
+            for (var i = 0; i < DATE_FIELD_NAMES.length; ++i) {
+                if (DATE_FIELD_NAMES[i] in idoc) {
+                    odoc['date'] = crimedb_common.formatDateForSolr(
+                        strptime(idoc[DATE_FIELD_NAMES[i]], '%m/%d/%Y %H:%M')
+                    );
+                    break;
+                }
+            }
+            if (! 'date' in odoc) {
+                callback('No date string found');
+                return;
+            }
 
             /* Perform asynchronous transformations */
             ++outstandingDocs;
