@@ -151,9 +151,10 @@ var api_handler = function(req) {
 
 var server = hapi.createServer('0.0.0.0', 8888, {
     cors: true,
-    files: { relativeTo: 'routes' },
+    files: { relativeTo: '.' },
 });
-server.route([{
+server.route([
+    {
         path: '/crimes',
         method: 'GET',
         handler: api_handler,

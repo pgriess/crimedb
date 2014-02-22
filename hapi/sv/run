@@ -15,4 +15,5 @@ export CRIMEDB_HOME=${CRIMEDB_HOME:-$(readlink -f $(dirname $(readlink -f $0))/.
 export NODE_PATH=${NODE_PATH:-/usr/lib/node_modules}
 NODE_PATH=$NODE_PATH:$CRIMEDB_HOME/lib
 
-exec node $CRIMEDB_HOME/hapi/index.js
+cd $CRIMEDB_HOME/hapi
+exec node ./index.js
