@@ -47,11 +47,11 @@ var transformSolrDocument = (function() {
     };
 })();
 
-var api_handler = function(req) {
+var api_handler = function(req, reply) {
 
     /* Fail the request with our JSON formatting */
     var failRequest = function(title, problemType) {
-        req.reply(
+        reply(
             JSON.stringify({
                 title: title,
                 problemType: 'http://' + req.info.host + '/errors/' +
@@ -141,7 +141,7 @@ var api_handler = function(req) {
             /*
              * TODO: Cursors.
              */
-            req.reply(JSON.stringify({
+            reply(JSON.stringify({
                     results: body.response.docs.map(transformSolrDocument)}))
                 .code(200)
                 .type('application/vnd.crimedb.org+json')
