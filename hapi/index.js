@@ -23,7 +23,7 @@ var transformSolrDocument = (function() {
         }],
         description: ['description', null],
         location: ['location', function(v) {
-            coords = v.split(',');
+            coords = v.split(/[, ]/);
 
             return {
                 type: 'Point',
