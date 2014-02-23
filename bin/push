@@ -57,9 +57,11 @@ if [[ $# -ne 0 ]] ; then
 fi
 
 rsync -rv \
-    --exclude=/.git \
-    --exclude=/solr/crime/data \
-    $(dirname $0)/.. $optCrimeDBUser@$optCrimeDBHost:$optCrimeDBDir || \
+    --exclude=.git* \
+    --exclude=solr/crime/data \
+    --exclude=data \
+    --exclude=*.swp \
+    $(dirname $0)/../ $optCrimeDBUser@$optCrimeDBHost:$optCrimeDBDir/ || \
     die "failed to rsync"
 
 if [[ -n $optRestartHapi ]] ; then
