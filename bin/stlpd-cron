@@ -19,6 +19,6 @@ for fn in $(cat $WORKDIR/after) ; do
         continue
     fi
 
-    echo "Adding $fn ..."
+    echo "Adding new file $fn ..."
     $(dirname $0)/stlpd-import $fn
 done
