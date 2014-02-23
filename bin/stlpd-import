@@ -119,7 +119,7 @@ var importCSVFile = function(solrUrl, csvPath, callback) {
                 }
             }
             if (! 'date' in odoc) {
-                callback('No date string found');
+                callback(Error('No date string found'));
                 return;
             }
 
