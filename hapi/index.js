@@ -27,7 +27,7 @@ var transformSolrDocument = (function() {
 
             return {
                 type: 'Point',
-                coordinates: [coords[1], coords[0]]
+                coordinates: [coords[0], coords[1]]
             };
         }],
     };
