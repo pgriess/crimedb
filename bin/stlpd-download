@@ -97,8 +97,13 @@ var downloadPage = function(pageFields, nextPageNumber, callback) {
 
             return id.match(/^GridView1.*downloadD/) !== null;
         }).each(function(i, e) {
-            var m = $(e).attr('href').match(
-                /^javascript:__doPostBack\('([^']+)/);
+            var href = $(e).attr('href');
+            if (!href) {
+                console.error('Ignoring <a> without href');
+                return;
+            }
+
+            var m = href.match(/^javascript:__doPostBack\('([^']+)/);
             if (!m) {
                 return;
             }
