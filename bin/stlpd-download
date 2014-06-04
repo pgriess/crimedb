@@ -12,6 +12,7 @@ var CRIME_REPORT_URL = 'http://www.slmpd.org/CrimeReport.aspx';
 
 if (process.argv.length != 3) {
     console.error('Download directory must be specified');
+    process.exit(1);
 }
 var DOWNLOAD_DIR = process.argv[2];
 
