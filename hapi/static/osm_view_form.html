@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <title>OSM Region Viewer</title>
+
+        <style type="text/css">
+            body {
+                font-family: helvetica;
+                margin-left: 10%;
+                margin-right: 10%;
+            }
+        </style>
+    </head>
+
+    <body>
+        <form action="/_/osm_view" enctype="multipart/form-data" method="POST">
+            <input type="file" name="file"/> <br/>
+            <input type="text" name="relation_id"/> <br/>
+            <input type="submit" value="Go!"/>
+        </form>
+    </body>
+</html>
