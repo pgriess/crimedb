@@ -215,7 +215,7 @@ var osm_view_handler = function(req, reply) {
         /* Render our template */
         var templateData = '';
 
-        var s = fs.createReadStream('static/osm_view.html');
+        var s = fs.createReadStream('static/templates/osm_view.html');
         s.on('data', function(s) {
             templateData += s;
         });
@@ -259,15 +259,15 @@ server.route([
     }, {
         path: '/viz',
         method: 'GET',
-        handler: { file: 'static/viz.html' },
+        handler: { file: 'static/html/viz.html' },
     }, {
         path: '/',
         method: 'GET',
-        handler: { file: 'static/index.html' },
+        handler: { file: 'static/html/index.html' },
     }, {
         path: '/_/osm_view',
         method: 'GET',
-        handler: { file: 'static/osm_view_form.html' },
+        handler: { file: 'static/html/osm_view_form.html' },
     }, {
         path: '/_/osm_view',
         method: 'POST',
