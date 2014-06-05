@@ -1,6 +1,6 @@
 <html>
     <head>
-        <title>OSM Region Viewer</title>
+        <title>OSM Relation Viewer</title>
 
         <style type="text/css">
             body {
@@ -12,10 +12,27 @@
     </head>
 
     <body>
+        <center><h1>OSM Relation Viewer</h1></center>
+
+        <p>
+            This form allows one to upload an
+            <a href="https://wiki.openstreetmap.org/wiki/OSM_XML">OpenStreetMap XML</a>
+            file and view a single relation on a map. The goal is to
+            provide a tool for helping to one to select the correct
+            relation from an OSM file. As a secondary goal, debugging
+            path issues is possible by using the slider at the bottom
+            of the screen to incrementally draw the path, with points
+            written out to the JavaScript console.
+        </p>
+
         <form action="/_/osm_view" enctype="multipart/form-data" method="POST">
+            OSM XML file to inspect:
             <input type="file" name="file"/> <br/>
+
+            Relation ID to view within the file:
             <input type="text" name="relation_id"/> <br/>
-            <input type="submit" value="Go!"/>
+
+            <input type="submit" value="View"/>
         </form>
     </body>
 </html>
