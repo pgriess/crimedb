@@ -9,8 +9,27 @@ var fs = require('fs');
 var hapi = require('hapi');
 var mustache = require('mustache');
 var osm = require('crimedb/osm');
+var path = require('path');
 var request = require('request');
 var strptime = require('micro-strptime').strptime;
+
+/**
+ * Given an array of OSM node objects, return a GeoJSON Polygon object
+ * that represents them.
+ */
+var geoJSONPolygonFromOSMNodes = function(osmNodes) {
+    return {
+        type: 'Polygon',
+        coordinates: [
+            osmNodes.map(function(o) {
+                return [
+                    o.attributes.lon,
+                    o.attributes.lat
+                ];
+            })
+        ]
+    };
+};
 
 /**
  * Send a failure response to the client.
@@ -213,8 +232,77 @@ var osm_view_handler = function(req, reply) {
     );
 };
 
+var regions_handler = function(req, reply) {
+    var processRegionFile = function(fp, cb) {
+        osm.readFullStream(
+            fs.createReadStream(fp),
+            function(err, _, nodes, ways, relations) {
+                if (err) {
+                    cb(err);
+                    return;
+                }
 
+                assert (Object.keys(relations).length === 1);
+                var rid = Object.keys(relations)[0];
+                var nids = osm.waysToContiguousNIDs(
+                    relations[rid].ways.map(
+                        function(wid) { return ways[wid]; }));
 
+                var fn = path.basename(fp);
+                var regionName = fn.substr(
+                    0, fn.length - path.extname(fn).length);
+
+                /* XXX: Assumes that a region is contiguous as it
+                 *      returns GeoJSON polygon objects. If we want to
+                 *      handle discontiguous regions, we should return
+                 *      MultiPolygon.
+                 */
+                cb(
+                    null,
+                    regionName,
+                    geoJSONPolygonFromOSMNodes(
+                        nids.map(function(nid) { return nodes[nid]; }))
+                );
+            }
+        );
+    };
+
+    fs.readdir('static/regions', function(err, files) {
+        if (err) {
+            sendFailureResponse(
+                req, reply, 'Error getting list of regions',
+                'InternalError');
+            return;
+        }
+
+        var outstandingFiles = files.length;
+        var responseSent = false;
+        var responseObj = {
+            regions: {
+            },
+        };
+
+        files.forEach(function(fn) {
+            processRegionFile('static/regions/' + fn, function(err, name, geo) {
+                if (err) {
+                    sendFailureResponse(
+                        req, reply, 'Error processing region file',
+                        'InternalError');
+                    responseSent = true;
+                    return;
+                }
+
+                --outstandingFiles;
+                responseObj.regions[name] = geo;
+
+                if (outstandingFiles == 0 && !responseSent) {
+                    reply(JSON.stringify(responseObj))
+                        .code(200)
+                        .type('application/vnd.crimed.org+json');
+                }
+            });
+        });
+    });
 };
 
 var server = hapi.createServer('0.0.0.0', 8888, {
@@ -234,6 +322,10 @@ server.route([
                 return 'static/errors/' + req.params.error + '.html';
             }
         }
+    }, {
+        path: '/regions',
+        method: 'GET',
+        handler: regions_handler,
     }, {
         path: '/viz',
         method: 'GET',
