@@ -165,83 +165,56 @@ var osm_view_handler = function(req, reply) {
     assert('relation_id' in req.payload);
     var relationID = req.payload.relation_id;
 
-    /* Pull out the list of nodes, ways and relations */
-    op = new osm.Parser();
+    assert('file' in req.payload);
 
-    var nodes = [];
-    op.on('node', function(n) {
-        nodes.push(n);
-    });
+    osm.readFullStream(
+        req.payload.file,
+        function(err, osm, nodes, ways, relations) {
+            if (err) {
+                sendFailureResponse(req, reply, 'Failed to parse OSM file', 'InternalError');
+                return;
+            }
 
-    var ways = [];
-    op.on('way', function(w) {
-        ways.push(w);
-    });
+            assert(relationID in relations);
 
-    var relations = [];
-    op.on('relation', function(r) {
-        relations.push(r);
-    });
+            /* Turn a node into a lat/lon object */
+            var pointFromNode = function(n) {
+                return {
+                    lon: n.attributes.lon,
+                    lat: n.attributes.lat,
+                };
+            };
 
-    op.on('end', function() {
-        /* Turn the relation into an ordered list of nodes */
-        var mapFromArray = function(a) {
-            var m = {};
-            a.forEach(function(o) {
-                m[o.attributes.id] = o;
+            /* Compute an ordered list of points for the relation */
+            var relationNIDs = osm.waysToContiguousNIDs(
+                relations[relationID].ways.map(function(wid) { return ways[wid]; }));
+            var relationPoints = [];
+            relationNIDs.forEach(function(nid) {
+                relationPoints.push(pointFromNode(nodes[nid]));
             });
 
-            return m;
-        };
+            /* Render our template */
+            var templateData = '';
 
-        var nodeMap = mapFromArray(nodes);
-        var wayMap = mapFromArray(ways);
-        var relationMap = mapFromArray(relations);
+            var s = fs.createReadStream('static/templates/osm_view.html');
+            s.on('data', function(s) {
+                templateData += s;
+            });
 
-        assert(relationID in relationMap);
+            s.on('end', function() {
+                reply(
+                    mustache.render(
+                        templateData, {
+                            mapNodes: relationPoints }))
+                    .code(200)
+                    .type('text/html');
+            });
+        }
+    );
+};
 
-        /* Turn a node into a lat/lon object */
-        var pointFromNode = function(n) {
-            return {
-                lon: n.attributes.lon,
-                lat: n.attributes.lat,
-            };
-        };
 
-        /* Compute an ordered list of points for the relation */
-        var relationNIDs = osm.waysToContiguousNIDs(
-            relationMap[relationID].ways.map(function(wid) { return wayMap[wid]; }),
-            nodes);
-        var relationPoints = [];
-        relationNIDs.forEach(function(nid) {
-            relationPoints.push(pointFromNode(nodeMap[nid]));
-        });
 
-        /* Render our template */
-        var templateData = '';
-
-        var s = fs.createReadStream('static/templates/osm_view.html');
-        s.on('data', function(s) {
-            templateData += s;
-        });
-
-        s.on('end', function() {
-            reply(
-                mustache.render(
-                    templateData, {
-                        mapNodes: relationPoints }))
-                .code(200)
-                .type('text/html');
-        });
-    });
-
-    op.on('error', function() {
-        reply('Failed to parse OSM file');
-        return;
-    });
-
-    assert('file' in req.payload);
-    op.parseXMLStream(req.payload.file);
 };
 
 var server = hapi.createServer('0.0.0.0', 8888, {
