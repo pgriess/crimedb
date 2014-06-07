@@ -12,6 +12,19 @@ var osm = require('crimedb/osm');
 var request = require('request');
 var strptime = require('micro-strptime').strptime;
 
+/**
+ * Send a failure response to the client.
+ */
+var sendFailureResponse = function(req, reply, title, problemType) {
+    reply(
+        JSON.stringify({
+            title: title,
+            problemType: 'http://' + req.info.host + '/errors/' +
+                problemType}))
+        .code(500)
+        .type('application/api-problem+json');
+};
+
 /*
  * Map Solr fields to our public API
  */
@@ -52,17 +65,6 @@ var transformSolrDocument = (function() {
 })();
 
 var api_handler = function(req, reply) {
-    /* Fail the request with our JSON formatting */
-    var failRequest = function(title, problemType) {
-        reply(
-            JSON.stringify({
-                title: title,
-                problemType: 'http://' + req.info.host + '/errors/' +
-                    problemType}))
-            .code(500)
-            .type('application/api-problem+json');
-    }
-
     /*
      * Apply query parameters from the request
      *
@@ -80,7 +82,8 @@ var api_handler = function(req, reply) {
     if ('time' in req.query) {
         var arr = /^\[(\d+):(\d+)\]$/.exec(req.query.time);
         if (!arr) {
-            failRequest('Invalid query parameter', 'InternalError');
+            sendFailureResponse(
+                req, reply, 'Invalid query parameter', 'InternalError');
             return;
         }
 
@@ -98,7 +101,8 @@ var api_handler = function(req, reply) {
     if ('location' in req.query) {
         var arr = /^\[(-?[\d\.]+)\s*,\s*(-?[\d\.]+):(-?[\d\.]+)\s*,\s*(-?[\d\.]+)\]$/.exec(req.query.location);
         if (!arr) {
-            failRequest('Invalid query parameter', 'InternalError');
+            sendFailureResponse(
+                req, reply, 'Invalid query parameter', 'InternalError');
             return;
         }
 
@@ -141,7 +145,8 @@ var api_handler = function(req, reply) {
         headers: {'Accept': 'application/json'}},
         function(err, resp, body) {
             if (err || 'error' in body) {
-                failRequest('Error talking to data store', 'InternalError');
+                sendFailureResponse(
+                    req, reply, 'Error talking to data store', 'InternalError');
                 return;
             }
 
