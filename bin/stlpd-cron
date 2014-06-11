@@ -20,5 +20,5 @@ for fn in $(cat $WORKDIR/after) ; do
     fi
 
     echo "Adding new file $fn ..."
-    $(dirname $0)/stlpd-import $fn
+    $(dirname $0)/stlpd-solr-import $fn
 done
