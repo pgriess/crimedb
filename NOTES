@@ -10,6 +10,13 @@ o TODO
       relatively well.
     . API for returning aggregated results in buckets using facets. For the
       existing viz, no need to do these computations on the client.
+    . The GPC algorithm (in JS at
+      http://boontaran.com/posts/view/gpcjs_javascript_port_of_gpc) seems like a
+      good candidate for performing polygon intersections, which is what is needed
+      to draw a map that isn't pixelated at the edges
+    . The ^ library is kind of janky (e.g. mucks w/ globals; doesn't allow
+      embedding in a RequireJS/AMD module). Possibly use emscripten to 
+      compile C reference implemtnation to asm.js
 
 o Interesting data sources
 
