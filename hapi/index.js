@@ -311,6 +311,15 @@ var server = hapi.createServer('0.0.0.0', 8888, {
 });
 server.route([
     {
+        path: '/js/{name}',
+        method: 'GET',
+        handler: {
+            directory: {
+                path: 'static/js',
+            },
+        },
+    },
+    {
         path: '/crimes',
         method: 'GET',
         handler: api_handler,
