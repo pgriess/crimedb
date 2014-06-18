@@ -48,12 +48,8 @@ now = utc_tz.localize(
                 time.mktime(time.gmtime())))
 
 crimes_by_month = defaultdict(list)
-num_crimes = 0
 for c in crimedb.stlpd.crimes():
     crimes_by_month[c.time.strftime('%Y-%m')] += [c]
-    num_crimes += 1
-    if num_crimes > 100:
-        break
 
 for month, crimes in crimes_by_month.items():
     with open(os.path.join(args.dir, month + '.json'), 'wt') as mf:
