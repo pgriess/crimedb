@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<solr persistent="false">
-    <cores>
-        <core name="crime" instanceDir="crime"/>
-    </cores>
-</solr>

@@ -1,164 +1,83 @@
-#!/bin/env node
-/*
- * Download STLPD crime data from http://www.slmpd.org/Crimereports.shtml.
- */
+#!/bin/env python3.3
+#
+# Download STLPD crime data and write YYYY-MM.json and meta.json files
+# to a directory.
+#
+# NOTES:
+#
+#   - The initial meta.json file was constructed by running hapi/sv/run and
+#     hitting /regions, then hand-editing the results. We should really port
+#     the OSM code to Python and do the missouri-latest.osm manipulation
+#     directly.
 
-var cheerio = require('cheerio');
-var console = require('console');
-var fs = require('fs');
-var request = require('request');
+import argparse
+from collections import defaultdict
+import datetime
+import json
+import logging
+import os.path
+import pytz
+import sys
+import time
 
-var CRIME_REPORT_URL = 'http://www.slmpd.org/CrimeReport.aspx';
+# Add src/ directory to PYTHONPATH so that this can be run without the operator
+# having to configure that manually
+sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
-if (process.argv.length != 3) {
-    console.error('Download directory must be specified');
-    process.exit(1);
-}
-var DOWNLOAD_DIR = process.argv[2];
+import crimedb.core
+import crimedb.stlpd
 
-/* Return the set of request options for making a form POST */
-var postOptions = function(formFields) {
-    return {
-        url: CRIME_REPORT_URL,
-        form: formFields,
-        headers: {'Accept': '*/*'}
-    };
-};
+utc_tz = pytz.timezone('UTC')
 
-/* Download a set of files described by a mapping of filename to form fields */
-var downloadFiles = function(files, callback) {
-    var fileNames = Object.keys(files);
-    if (fileNames.length == 0) {
-        callback(null);
-        return;
-    }
+ap = argparse.ArgumentParser(
+        description='''
+Download St. Louis Police Department crime data from
+http://www.slmpd.org/Crimereports.shtml and transform it into CrimeDB
+JSON files.
+''')
+ap.add_argument('--dir', default='.',
+                help='output directory (default: %(default)s)')
+ap.add_argument('-v', action='count', dest='verbosity', default=0,
+                help='increase logging verbosity; can be used multiple times')
 
-    var fileName = fileNames.pop();
-    var formFields = files[fileName];
-    delete files[fileName];
+args = ap.parse_args()
 
-    /* Skip files that we've already downloaded */
-    if (fs.existsSync(DOWNLOAD_DIR + '/' + fileName)) {
-        downloadFiles(files, callback);
-        return;
-    }
+logging.basicConfig(
+        level=logging.ERROR - args.verbosity * 10,
+        style='{',
+        format='{prog}: {{message}}'.format(
+                prog=os.path.basename(sys.argv[0])))
 
-    request.post(
-        postOptions(formFields),
-        function(err, resp) {
-            if (!err && resp.statusCode != 200) {
-                err = Error(
-                    'Failed download with HTTP status ' + resp.statusCode);
-            }
+now = utc_tz.localize(
+        datetime.datetime.fromtimestamp(
+                time.mktime(time.gmtime())))
 
-            if (err) {
-                callback(err);
-            } else {
-                downloadFiles(files, callback);
-            }
-        }
-    ).pipe(fs.createWriteStream(DOWNLOAD_DIR + '/' + fileName));
-};
+crimes_by_month = defaultdict(list)
+for c in crimedb.stlpd.crimes():
+    crimes_by_month[c.time.strftime('%Y-%m')] += [c]
 
-/*
- * Post the given set of fields and process the result as a table of
- * downloadable links to CSV files. On completion the callback gets an
- * error and the set of fields to post to get the next page.
- */
-var downloadPage = function(pageFields, nextPageNumber, callback) {
-    request.post(postOptions(pageFields), function(err, resp) {
-        if (err) {
-            callback(err, null);
-            return;
-        }
+for month, crimes in crimes_by_month.items():
+    with open(os.path.join(args.dir, month + '.json'), 'wt') as mf:
+        json.dump({
+                'update_time': now.strftime(
+                        crimedb.core.RFC3999_STRFTIME_FORMAT),
+                'crimes': [crimedb.core.crime2json_obj(c) for c in crimes],
+            },
+            mf
+        )
 
-        $ = cheerio.load(resp.body);
+with open(os.path.join(args.dir, 'meta.json'), 'rt') as mf:
+    meta_obj = json.load(mf)
 
-        /* 
-         * Template of the form fields that we'll submit with each download
-         * request.
-         */
-        var formFields = {
-            '__EVENTTARGET': '',
-            '__EVENTARGUMENT': '',
-        };
+meta_obj['update_time'] = now.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT)
 
-        $('input[type="hidden"]').each(function(i, e) {
-            formFields[$(e).attr('name')] = $(e).attr('value');
-        });
+crime_months = sorted(crimes_by_month.keys())
+meta_obj['date_range'] = [
+    sorted(crimes_by_month[crime_months[0]],
+           key=lambda c: c.time)[0].time.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT),
+    sorted(crimes_by_month[crime_months[-1]],
+           key=lambda c: c.time)[-1].time.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT),
+]
 
-        /* Map of files to download to their form parameters */
-        var filesToDownload = {};
-
-        $('a').filter(function(i) {
-            var id = $(this).attr('id');
-            if (!id) {
-                return false;
-            }
-
-            return id.match(/^GridView1.*downloadD/) !== null;
-        }).each(function(i, e) {
-            var href = $(e).attr('href');
-            if (!href) {
-                console.error('Ignoring <a> without href');
-                return;
-            }
-
-            var m = href.match(/^javascript:__doPostBack\('([^']+)/);
-            if (!m) {
-                return;
-            }
-
-            var fields = {};
-            for (fieldName in formFields) {
-                fields[fieldName] = formFields[fieldName];
-            }
-            fields['__EVENTTARGET'] = m[1];
-
-            filesToDownload[$(e).text()] = fields;
-        });
-
-        /*
-         * Form parameters for the next page to download. Even though we know
-         * exactly how this is formed and could just synthesize it directly,
-         * make sure it's listed on the page so that we know when we're done
-         * paging.
-         */
-        var nextPageFields = null;
-        if ($('a[href="javascript:__doPostBack(\'GridView1\',\'Page$' + nextPageNumber + '\')"]').length == 1) {
-            nextPageFields = {};
-            for (fieldName in formFields) {
-                nextPageFields[fieldName] = formFields[fieldName];
-            }
-            nextPageFields['__EVENTTARGET'] = 'GridView1';
-            nextPageFields['__EVENTARGUMENT'] = 'Page$' + nextPageNumber;
-        }
-
-        downloadFiles(filesToDownload, function(err) {
-            callback(err, nextPageFields);
-        });
-    });
-};
-
-/*
- * Download a sequence of pages starting with the given set of fields and
- * continuing through pages until there are none left.
- */
-var downloadAllPages = function(pageFields, nextPageNumber, callback) {
-    downloadPage(pageFields, nextPageNumber, function(err, nextPageFields) {
-        if (err || nextPageFields === null) {
-            callback(err);
-            return;
-        }
-
-        downloadAllPages(nextPageFields, nextPageNumber + 1, callback);
-    });
-};
-
-downloadAllPages({}, 2, function(err) {
-    if (err) {
-        throw err;
-    }
-});
-
-// vim:filetype=javascript
+with open(os.path.join(args.dir, 'meta.json'), 'wt') as mf:
+    json.dump(meta_obj, mf)
