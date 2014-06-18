@@ -2,6 +2,13 @@
 #
 # Download STLPD crime data and write YYYY-MM.json and meta.json files
 # to a directory.
+#
+# NOTES:
+#
+#   - The initial meta.json file was constructed by running hapi/sv/run and
+#     hitting /regions, then hand-editing the results. We should really port
+#     the OSM code to Python and do the missouri-latest.osm manipulation
+#     directly.
 
 import argparse
 from collections import defaultdict
