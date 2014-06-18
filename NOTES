@@ -1,3 +1,30 @@
+o Serve site entirely from S3
+    . DNS CNAME to bucket vhost
+    . www from index.html in bucket root dir
+    . API fetches pre-computed JSON files from S3
+        . Region files
+        . Crime data files
+
+o Cronjob dumps formatted data files in S3
+
+o API
+    . Directory per region
+    . Each region:
+        . meta.json
+            . boundary GeoJSON
+            . last update time
+            . oldest file; newest file
+            . name
+            . source (URL)
+        . YYYY-MM.json
+            . last update time (RFC 3339)
+            . array of events
+                . GeoJSON point
+                . free-text description
+                . timestamp (RFC 3339)
+
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
 o TODO
 
     . Filter out coordinates that we couldn't translate
