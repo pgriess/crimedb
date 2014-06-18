@@ -12,8 +12,6 @@
 
 import argparse
 from collections import defaultdict
-import crimedb.core
-import crimedb.stlpd
 import datetime
 import json
 import logging
@@ -21,6 +19,13 @@ import os.path
 import pytz
 import sys
 import time
+
+# Add src/ directory to PYTHONPATH so that this can be run without the operator
+# having to configure that manually
+sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
+
+import crimedb.core
+import crimedb.stlpd
 
 utc_tz = pytz.timezone('UTC')
 
