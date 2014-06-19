@@ -1,0 +1,22 @@
+#!/bin/env bash -x
+#
+# Sync directory tree to S3.
+
+CRIMEDB_ROOT=$(dirname $0)/..
+S3_URL=s3://www.crimedb.org
+
+cleanup() {
+    rm -fr $workdir
+}
+
+WORKDIR=$(mktemp -d)
+trap cleanup EXIT
+
+cat >$WORKDIR/exclude <<EOF
+cache/.*
+EOF
+
+s3cmd -P -v sync \
+    --delete-removed \
+    --rexclude-from=$WORKDIR/exclude \
+    $CRIMEDB_ROOT/data/ $S3_URL/data/

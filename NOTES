@@ -4,8 +4,11 @@ o Serve site entirely from S3
     . API fetches pre-computed JSON files from S3
         . Region files
         . Crime data files
+    . Set up CORS attribute on bucket
+    . Set default file in bucket to index.html
 
 o Cronjob dumps formatted data files in S3
+    . Can be run from laptop; no need for EC2 instance
 
 o API
     . Directory per region
