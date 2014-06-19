@@ -105,9 +105,15 @@ def crimes():
             events = []
 
             csv_reader = csv.reader(
-                    io.TextIOWrapper(file_contents, encoding='utf-8'))
+                    io.TextIOWrapper(file_contents, encoding='utf-8',
+                                     errors='replace')
+            )
             for crime_row in csv_reader:
                 if cols is None:
+                    # Normalize field names that can differ in some months
+                    if 'DateOccured' in crime_row:
+                        crime_row[crime_row.index('DateOccured')] = 'DateOccur'
+
                     cols = crime_row
                     continue
 
