@@ -37,6 +37,8 @@ JSON files.
 ''')
 ap.add_argument('--dir', default='.',
                 help='output directory (default: %(default)s)')
+ap.add_argument('--cache-dir', default=None,
+                help='cache directory')
 ap.add_argument('-v', action='count', dest='verbosity', default=0,
                 help='increase logging verbosity; can be used multiple times')
 
@@ -53,9 +55,10 @@ now = utc_tz.localize(
                 time.mktime(time.gmtime())))
 
 crimes_by_month = defaultdict(list)
-for c in crimedb.stlpd.crimes():
+for c in crimedb.stlpd.crimes(cache_dir=args.cache_dir):
     crimes_by_month[c.time.strftime('%Y-%m')] += [c]
 
+logging.info('writing month files')
 for month, crimes in crimes_by_month.items():
     with open(os.path.join(args.dir, month + '.json'), 'wt') as mf:
         json.dump({
@@ -66,6 +69,7 @@ for month, crimes in crimes_by_month.items():
             mf
         )
 
+logging.info('updating meta.json')
 with open(os.path.join(args.dir, 'meta.json'), 'rt') as mf:
     meta_obj = json.load(mf)
 

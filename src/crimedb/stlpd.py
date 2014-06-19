@@ -9,6 +9,7 @@ import datetime
 import io
 import logging
 import lxml, lxml.etree
+import os.path
 import pyproj
 import pytz
 import re
@@ -61,7 +62,7 @@ def __toc_pages():
 
 # Iterator which yields (filename, contents) tuples of each CSV file
 # on a given TOC page.
-def __toc_page_files(tp):
+def __toc_page_files(tp, cache_dir=None):
     et = lxml.etree.parse(tp, lxml.etree.HTMLParser())
     global_form_fields = __toc_global_form_fields(et)
 
@@ -79,16 +80,32 @@ def __toc_page_files(tp):
         if not m:
             continue
 
-        file_form_fields = global_form_fields.copy()
-        file_form_fields['__EVENTTARGET'] = m.group(1)
-        r = urllib.request.urlopen(
-                __BASE_URL,
-                data=urllib.parse.urlencode(file_form_fields).encode('utf-8'))
+        fn = fa.text
+        if cache_dir:
+            fp = os.path.join(cache_dir, fn)
 
-        yield fa.text, r
+        response = None
+        if not cache_dir or not os.path.exists(fp):
+            logging.debug('{} not found in cache; downloading'.format(fn))
+
+            file_form_fields = global_form_fields.copy()
+            file_form_fields['__EVENTTARGET'] = m.group(1)
+            form_data = urllib.parse.urlencode(file_form_fields).encode('utf-8')
+            response = urllib.request.urlopen(__BASE_URL, data=form_data)
+
+        if cache_dir and response:
+            with open(fp, 'wb') as cf:
+                cf.write(response.read())
+
+        if cache_dir:
+            with open(fp, 'rb') as cf:
+                yield fn, cf
+        else:
+            assert response
+            yield fn, response
 
 
-def crimes():
+def crimes(cache_dir=None):
     '''
     Iterator which yields Crime objects.
 
@@ -97,7 +114,8 @@ def crimes():
     '''
 
     for tp in __toc_pages():
-        for file_name, file_contents in __toc_page_files(tp):
+        for file_name, file_contents in __toc_page_files(
+                tp, cache_dir=cache_dir):
             logging.debug(
                     'processing STLPD file: {}'.format(file_name))
 
