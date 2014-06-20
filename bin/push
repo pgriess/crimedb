@@ -32,6 +32,8 @@ rsync -a \
 
 case $dest in
     s3://*)
+        # Strip trailing /, as S3 doesn't normalize multiple '/' chars
+        dest=$(echo $dest | sed -e 's:/$::g')
         s3cmd -P -v sync \
             --delete-removed \
             $WORKDIR/ $dest/
