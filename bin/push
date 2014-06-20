@@ -39,5 +39,5 @@ case $dest in
             $WORKDIR/ $dest/
         ;;
     *)
-        rsync -av --delete $WORKDIR/ $dest/
+        rsync -a --delete $WORKDIR/ $dest/
 esac
