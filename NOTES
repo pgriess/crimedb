@@ -25,6 +25,8 @@ o API
                 . GeoJSON point
                 . free-text description
                 . timestamp (RFC 3339)
+        . index.html
+            . visualizations
 
 = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
