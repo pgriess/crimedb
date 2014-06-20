@@ -1,22 +1,41 @@
 #!/bin/env bash -x
 #
-# Sync directory tree to S3.
+# Sync directory tree to S3
+#
+# TODO:
+#
+#   - Change local mode to write symlinks to the destination directory
+#     so that bin/push need only be run when new files are created
 
+EXEC=$(basename $0)
 CRIMEDB_ROOT=$(dirname $0)/..
-S3_URL=s3://www.crimedb.org
+WORKDIR=$(mktemp -d)
 
 cleanup() {
-    rm -fr $workdir
+    rm -fr $WORKDIR
 }
 
-WORKDIR=$(mktemp -d)
 trap cleanup EXIT
 
-cat >$WORKDIR/exclude <<EOF
-cache/.*
-EOF
+if [[ $# -ne 1 ]] ; then
+    echo >&2 "$EXEC: missing required destination"
+fi
+dest=$1
+shift
 
-s3cmd -P -v sync \
-    --delete-removed \
-    --rexclude-from=$WORKDIR/exclude \
-    $CRIMEDB_ROOT/data/ $S3_URL/data/
+rsync -a \
+    '--exclude=*.swp' '--exclude=cache*' \
+    $CRIMEDB_ROOT/data $WORKDIR/
+rsync -a \
+    '--exclude=*.swp' \
+    $CRIMEDB_ROOT/html/ $WORKDIR/
+
+case $dest in
+    s3://*)
+        s3cmd -P -v sync \
+            --delete-removed \
+            $WORKDIR/ $dest/
+        ;;
+    *)
+        rsync -av --delete $WORKDIR/ $dest/
+esac
