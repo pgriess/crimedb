@@ -136,7 +136,7 @@ def crimes(cache_dir=None):
                     continue
 
                 crime_dict = dict(zip(cols, crime_row))
-                lat, lon = __SPCS_PROJ(
+                lon, lat = __SPCS_PROJ(
                         float(crime_dict['XCoord']),
                         float(crime_dict['YCoord']),
                         inverse=True, errcheck=True)
