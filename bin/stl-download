@@ -17,6 +17,7 @@ import json
 import logging
 import os.path
 import pytz
+import shapely.geometry
 import sys
 import time
 
@@ -35,8 +36,8 @@ Download St. Louis Police Department crime data from
 http://www.slmpd.org/Crimereports.shtml and transform it into CrimeDB
 JSON files.
 ''')
-ap.add_argument('--dir', default='.',
-                help='output directory (default: %(default)s)')
+ap.add_argument('--data-dir', default='.',
+                help='data directory (default: %(default)s)')
 ap.add_argument('--cache-dir', default=None,
                 help='cache directory')
 ap.add_argument('-v', action='count', dest='verbosity', default=0,
@@ -54,13 +55,18 @@ now = utc_tz.localize(
         datetime.datetime.fromtimestamp(
                 time.mktime(time.gmtime())))
 
+with open(os.path.join(args.data_dir, 'meta.json'), 'rt') as mf:
+    meta_obj = json.load(mf)
+region = shapely.geometry.Polygon(
+    shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
+
 crimes_by_month = defaultdict(list)
-for c in crimedb.stl.crimes(cache_dir=args.cache_dir):
+for c in crimedb.stl.crimes(cache_dir=args.cache_dir, region=region):
     crimes_by_month[c.time.strftime('%Y-%m')] += [c]
 
 logging.info('writing month files')
 for month, crimes in crimes_by_month.items():
-    with open(os.path.join(args.dir, month + '.json'), 'wt') as mf:
+    with open(os.path.join(args.data_dir, month + '.json'), 'wt') as mf:
         json.dump({
                 'update_time': now.strftime(
                         crimedb.core.RFC3999_STRFTIME_FORMAT),
@@ -70,8 +76,6 @@ for month, crimes in crimes_by_month.items():
         )
 
 logging.info('updating meta.json')
-with open(os.path.join(args.dir, 'meta.json'), 'rt') as mf:
-    meta_obj = json.load(mf)
 
 meta_obj['update_time'] = now.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT)
 
@@ -83,5 +87,5 @@ meta_obj['date_range'] = [
            key=lambda c: c.time)[-1].time.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT),
 ]
 
-with open(os.path.join(args.dir, 'meta.json'), 'wt') as mf:
+with open(os.path.join(args.data_dir, 'meta.json'), 'wt') as mf:
     json.dump(meta_obj, mf)

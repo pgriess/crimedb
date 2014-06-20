@@ -13,6 +13,7 @@ import os.path
 import pyproj
 import pytz
 import re
+import shapely.geometry
 import urllib.request, urllib.parse
 
 __BASE_URL = 'http://www.slmpd.org/CrimeReport.aspx'
@@ -105,12 +106,20 @@ def __toc_page_files(tp, cache_dir=None):
             yield fn, response
 
 
-def crimes(cache_dir=None):
+def crimes(cache_dir=None, region=None):
     '''
     Iterator which yields Crime objects.
 
     This hits the St. Louis Police Department server and downloads all CSV
     files. It is not a cheap operation.
+
+    cache_dir is a filesystem directory with which to maintain a
+    cache of downloaded files. If None, files will always be
+    downloaded and never cached.
+
+    region is an shapely.geometry object describing the region for
+    which we're collecting data. Any crimes found to be outside this
+    area will be discarded.
     '''
 
     for tp in __toc_pages():
@@ -126,7 +135,9 @@ def crimes(cache_dir=None):
                     io.TextIOWrapper(file_contents, encoding='utf-8',
                                      errors='replace')
             )
+            row_num = 0
             for crime_row in csv_reader:
+                row_num += 1
                 if cols is None:
                     # Normalize field names that can differ in some months
                     if 'DateOccured' in crime_row:
@@ -136,13 +147,22 @@ def crimes(cache_dir=None):
                     continue
 
                 crime_dict = dict(zip(cols, crime_row))
+
                 lon, lat = __SPCS_PROJ(
                         float(crime_dict['XCoord']),
                         float(crime_dict['YCoord']),
                         inverse=True, errcheck=True)
+                crime_point = shapely.geometry.Point(lon, lat)
+                if region and not region.contains(crime_point):
+                    logging.debug(
+                            ('crime on row {row} at ({lon}, {lat}) is outside of our region; '
+                             'ignoring').format(row=row_num, lon=lon, lat=lat))
+                    continue
+
                 date = datetime.datetime.strptime(
                         crime_dict['DateOccur'],
                         '%m/%d/%Y %H:%M')
+
                 yield crimedb.core.Crime(
                     crime_dict['Description'],
                     __TZ.localize(date),
