@@ -1,7 +1,7 @@
 #!/bin/env python3.3
 #
-# Download STLPD crime data and write YYYY-MM.json and meta.json files
-# to a directory.
+# Download St. Louis Police Department crime data and write YYYY-MM.json and
+# meta.json files to a directory.
 #
 # NOTES:
 #
@@ -25,7 +25,7 @@ import time
 sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
 import crimedb.core
-import crimedb.stlpd
+import crimedb.stl
 
 utc_tz = pytz.timezone('UTC')
 
@@ -55,7 +55,7 @@ now = utc_tz.localize(
                 time.mktime(time.gmtime())))
 
 crimes_by_month = defaultdict(list)
-for c in crimedb.stlpd.crimes(cache_dir=args.cache_dir):
+for c in crimedb.stl.crimes(cache_dir=args.cache_dir):
     crimes_by_month[c.time.strftime('%Y-%m')] += [c]
 
 logging.info('writing month files')

@@ -109,15 +109,15 @@ def crimes(cache_dir=None):
     '''
     Iterator which yields Crime objects.
 
-    This hits the STLPD server and downloads all CSV files. It is not a cheap
-    operation.
+    This hits the St. Louis Police Department server and downloads all CSV
+    files. It is not a cheap operation.
     '''
 
     for tp in __toc_pages():
         for file_name, file_contents in __toc_page_files(
                 tp, cache_dir=cache_dir):
             logging.debug(
-                    'processing STLPD file: {}'.format(file_name))
+                    'processing STL file: {}'.format(file_name))
 
             cols = None
             events = []
