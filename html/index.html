@@ -1,0 +1,173 @@
+<html>
+    <head>
+        <title>CrimeDB</title>
+
+        <style type="text/css">
+            body {
+                font-family: helvetica;
+                margin-left: 10%;
+                margin-right: 10%;
+            }
+        </style>
+
+        <script>
+          // XXX: Do these get sent out for localhost? Ruh roh.
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+          ga('create', 'UA-18586119-3', 'crimedb.org');
+          ga('send', 'pageview');
+        </script>
+
+    </head>
+
+    <body>
+        <center><h1>CrimeDB</h1></center>
+
+        <p>
+            CrimeDB is a searchable database of crime data with an easy-to-use
+            HTTP JSON API. At the moment, its database consists of more than
+            300,000 individual crimes from the <a
+            href="http://www.slmpd.org/">St Louis Metropolitan Police
+            Department</a> from April 2008 to the present. Please feel free to
+            use this data however you see fit. If you come up with anything
+            cool, let me know at
+            <a href="mailto:info@crimedb.org">info@crimedb.org</a>.
+        </p>
+
+        <h2>Visualization</h2>
+        A simple visualization of crime frequency in the city of St Louis is
+        available <a href="/viz">here</a>.
+
+        <h2>API</h2>
+
+        <p>
+            The API is pretty simple to use. Just issue <tt>GET</tt> requests
+            to <tt>http://api.crimedb.org/crimes</tt> and you'll get back JSON
+            data with the following fields:
+        </p>
+
+        <ul>
+            <li><tt>description</tt> -- freeform textual description of the
+                                        crime</li>
+            <li><tt>time</tt> -- time the crime occurred, in UTC epoch seconds</li>
+            <li><tt>location</tt> -- a <a
+            href="http://www.geojson.org/">GeoJSON</a> entity describing the
+            location of the crime
+        </ul>
+
+        <p>
+            Requests to the <tt>/crimes</tt> URL support some query parameters
+            that shape how results are returned:
+        </p>
+
+        <ul>
+            <li><tt>description=TTT</tt> -- filter results to only those whose
+            description contains the given text
+            <li><tt>time=[NNN:MMM]</tt> -- filter results to only those
+            that occurred between NNN and MMM UTC epoch seconds</li>
+            <li><tt>location=[&lt;lat1&gt;,&lt;lon1&gt;:&lt;lat2&gt;,&lt;lon2&gt;]</tt>
+            -- filter results to only those that occurred within the bounding
+            box described by the two points</li>
+            <li><tt>limit=NNN</tt> -- limit the number of results returned</li>
+        </ul>
+
+        <h3>Examples</h3>
+
+        <p>
+            Retrieve all crimes that occurred on January 1, 2013 CST by using
+            the <tt>time</tt> query paramter to filter. Note that the CST time
+            zone is 6 hours behind UTC, 12:00am January 1 CST is 6:00am January
+            1, 2013 UTC.
+        </p>
+
+        <pre>
+$ curl -g 'http://api.crimedb.org/crimes?time=[1357020000:1357106400]'
+{
+    "results": [
+        {
+            "description": "LARCENY-MTR VEH PARTS UNDER $500",
+            "location": {
+                "coordinates": [
+                    "-90.2213888888889",
+                    "38.62388888888889"
+                ],
+                "type": "Point"
+            },
+            "time": 1357020000
+        },
+        {
+            "description": "BURGLARY-RESDNCE/UNK TIM/UNLW EN/UNOCCUPIED",
+            "location": {
+                "coordinates": [
+                    "-90.24305555555556",
+                    "38.57027777777778"
+                ],
+                "type": "Point"
+            },
+            "time": 1357027200
+        },
+        ...
+    ]
+}
+        </pre>
+
+        <p>
+            Retrieve all crimes that occurred within a few blocks of Busch
+            Stadium, which is at 38.62371760,-90.19330450.
+        </p>
+
+        <pre>
+$ curl -g 'http://api.crimedb.org/crimes?location=[38.629,-90.198:38.619,-90.188]'
+{
+    "results": [
+        {
+            "description": "BURGLARY-RESIDENCE/DAY/FORCE ENT/UNOCCUPIED",
+            "location": {
+                "coordinates": [
+                    "-90.18805555555556",
+                    "38.62722222222222"
+                ],
+                "type": "Point"
+            },
+            "time": 1238833800
+        },
+        {
+            "description": "ROBBERY-BANK     /FIREARM USED/SUCCESSFUL",
+            "location": {
+                "coordinates": [
+                    "-90.1913888888889",
+                    "38.628055555555555"
+                ],
+                "type": "Point"
+            },
+            "time": 1239890100
+        },
+        ...
+    ]
+}
+        </pre>
+
+        <h3>How can you help?</h3>
+
+        If you're interested in this project, there are a few ways you can help
+        out:
+
+        <ul>
+            <li>
+                Let me know if you run into any bugs, have feature suggestions,
+                etc by shooting an email over to
+                <a href="mailto:info@crimedb.org">info@crimedb.org</a>.
+            </li>
+            <li>
+                Poke around at the source code, which you can find it on GitHib
+                at <a
+                href="https://github.com/pgriess/crimedb">pgriess/crimedb</a>.
+                Pull requests happily accepted for just about anything under
+                the sun. This thing is pretty bare-bones, obviously.
+            </li>
+        </ul>
+    </body>
+</html>
