@@ -108,7 +108,8 @@ define(function() {
 
             /* Filter out crimes that did not occur within our boundaries */
             crimeData = crimeData.filter(function(c) {
-                return c.geo.coordinates[0] >= bbox[0] &&
+                return 'geo' in c &&
+                       c.geo.coordinates[0] >= bbox[0] &&
                        c.geo.coordinates[0] <= bbox[1] &&
                        c.geo.coordinates[1] >= bbox[2] &&
                        c.geo.coordinates[1] <= bbox[3];

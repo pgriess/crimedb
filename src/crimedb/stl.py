@@ -148,22 +148,22 @@ def crimes(cache_dir=None, region=None):
 
                 crime_dict = dict(zip(cols, crime_row))
 
-                lon, lat = __SPCS_PROJ(
+                loc = __SPCS_PROJ(
                         float(crime_dict['XCoord']),
                         float(crime_dict['YCoord']),
                         inverse=True, errcheck=True)
-                crime_point = shapely.geometry.Point(lon, lat)
+                crime_point = shapely.geometry.Point(*loc)
                 if region and not region.contains(crime_point):
                     logging.debug(
                             ('crime on row {row} at ({lon}, {lat}) is outside of our region; '
-                             'ignoring').format(row=row_num, lon=lon, lat=lat))
-                    continue
+                             'stripping location').format(
+                                 row=row_num, lon=loc[0], lat=loc[1]))
+                    loc = None
 
                 date = datetime.datetime.strptime(
                         crime_dict['DateOccur'],
                         '%m/%d/%Y %H:%M')
 
                 yield crimedb.core.Crime(
-                    crime_dict['Description'],
-                    __TZ.localize(date),
-                    [lon, lat])
+                        crime_dict['Description'],
+                        __TZ.localize(date), loc)

@@ -30,11 +30,15 @@ def crime2json_obj(crime):
     converting to JSON.
     '''
 
-    return {
+    jo = {
         'description': crime.description,
         'time': crime.time.strftime(RFC3999_STRFTIME_FORMAT),
-        'geo': {
+    }
+
+    if crime.location:
+        jo['geo'] = {
             'type': 'Point',
             'coordinates': crime.location,
-        },
-    }
+        }
+
+    return jo
