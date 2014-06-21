@@ -136,7 +136,7 @@ requirejs(
                                 div.innerHTML +=
                                     '<i class="swatch" ' +
                                         'style="background: ' +
-                                        GRID_COLORS[i] +
+                                        GRID_COLORS[i - 1] +
                                         ';"></i>' + text + '<br/>';
                             }
 
