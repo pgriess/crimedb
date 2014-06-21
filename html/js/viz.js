@@ -1,5 +1,5 @@
 requirejs.config({
-    baseUrl: 'js',
+    baseUrl: '../js',
 });
 
 requirejs(
@@ -36,7 +36,7 @@ requirejs(
 
         /* TODO: Filter returned regions by map's viewable area */
         var getMetaData = function(map, cb) {
-            jquery.getJSON('data/stl/meta.json', cb);
+            jquery.getJSON('meta.json', cb);
         };
 
         var updateMap = function(map) {
@@ -51,7 +51,7 @@ requirejs(
                 currentBounds = bounds;
 
                 jquery.getJSON(
-                    'data/stl/2013-01.json',
+                    '2013-01.json',
                     function (crimeData) {
                         currentLayers.forEach(function(l) {
                             map.removeLayer(l);

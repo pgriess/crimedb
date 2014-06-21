@@ -25,7 +25,7 @@ shift
 
 rsync -a \
     '--exclude=*.swp' '--exclude=cache*' \
-    $CRIMEDB_ROOT/data $WORKDIR/
+    $CRIMEDB_ROOT/data/ $WORKDIR/
 rsync -a \
     '--exclude=*.swp' \
     $CRIMEDB_ROOT/html/ $WORKDIR/
