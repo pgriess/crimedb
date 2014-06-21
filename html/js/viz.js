@@ -29,6 +29,20 @@ requirejs(
             1.0
         ];
         var CITY_HALL = [38.627047, -90.199192];
+        var MONTHS = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December',
+        ];
 
         var currentLayers = [];
         var legendLayer = null;
@@ -48,10 +62,16 @@ requirejs(
                     return;
                 }
 
+                var jsonFilename = md['files'][md.files.length - 1];
+                var year = jsonFilename.split('-')[0];
+                var month = new Number(jsonFilename.split('.')[0].split('-')[1]);
+                $('#from-label').text(
+                    'from ' + MONTHS[month.valueOf() - 1] + ' ' + year);
+
                 currentBounds = bounds;
 
                 jquery.getJSON(
-                    '2013-01.json',
+                    jsonFilename,
                     function (crimeData) {
                         currentLayers.forEach(function(l) {
                             map.removeLayer(l);
