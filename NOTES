@@ -16,9 +16,9 @@ o API
         . meta.json
             . boundary GeoJSON
             . last update time
-            . oldest file; newest file
             . name
             . source (URL)
+            . list of JSON files, relative to meta.json
         . YYYY-MM.json
             . last update time (RFC 3339)
             . array of events

@@ -60,13 +60,13 @@ with open(os.path.join(args.data_dir, 'meta.json'), 'rt') as mf:
 region = shapely.geometry.Polygon(
     shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
 
-crimes_by_month = defaultdict(list)
+crimes_by_month_filenames = defaultdict(list)
 for c in crimedb.stl.crimes(cache_dir=args.cache_dir, region=region):
-    crimes_by_month[c.time.strftime('%Y-%m')] += [c]
+    crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
 
 logging.info('writing month files')
-for month, crimes in crimes_by_month.items():
-    with open(os.path.join(args.data_dir, month + '.json'), 'wt') as mf:
+for fn, crimes in crimes_by_month_filenames.items():
+    with open(os.path.join(args.data_dir, fn), 'wt') as mf:
         json.dump({
                 'update_time': now.strftime(
                         crimedb.core.RFC3999_STRFTIME_FORMAT),
@@ -78,14 +78,7 @@ for month, crimes in crimes_by_month.items():
 logging.info('updating meta.json')
 
 meta_obj['update_time'] = now.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT)
-
-crime_months = sorted(crimes_by_month.keys())
-meta_obj['date_range'] = [
-    sorted(crimes_by_month[crime_months[0]],
-           key=lambda c: c.time)[0].time.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT),
-    sorted(crimes_by_month[crime_months[-1]],
-           key=lambda c: c.time)[-1].time.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT),
-]
+meta_obj['files'] = list(sorted(crimes_by_month_filenames.keys()))
 
 with open(os.path.join(args.data_dir, 'meta.json'), 'wt') as mf:
     json.dump(meta_obj, mf)
