@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-requirejs.config({
-    baseUrl: '../../js',
-});
-
-requirejs(
+define(
     ['jquery', 'jquery-ui', 'leaflet', 'viz-util'],
     function(jquery, jqueryUi, L, vizUtil) {
         var GRID_SIZE = 0.002;
+
         // http://www.colorbrewer2.org/
         var GRID_COLORS = [
             '#3288BD',
@@ -33,6 +30,7 @@ requirejs(
             '#F46D43',
             '#D53E4F',
         ];
+
         var GRID_PERCENTILES = [
             0.0,
             0.10,
@@ -44,7 +42,7 @@ requirejs(
             0.99,
             1.0
         ];
-        var CITY_HALL = [38.627047, -90.199192];
+
         var MONTHS = [
             'January',
             'February',
@@ -65,12 +63,12 @@ requirejs(
         var currentBounds = null;
 
         /* TODO: Filter returned regions by map's viewable area */
-        var getMetaData = function(map, cb) {
-            jquery.getJSON('http://data.crimedb.org/stl/index.json', cb);
+        var getMetaData = function(dataset, cb) {
+            jquery.getJSON('http://data.crimedb.org/' + dataset + '/', cb);
         };
 
-        var updateMap = function(map) {
-            getMetaData(map, function(md) {
+        var updateMap = function(dataset, map) {
+            getMetaData(dataset, function(md) {
                 var bounds = map.getBounds();
 
                 // Map hasn't changed; nothing to do
@@ -87,7 +85,7 @@ requirejs(
                 currentBounds = bounds;
 
                 jquery.getJSON(
-                    'http://data.crimedb.org/stl/' + jsonFilename,
+                    'http://data.crimedb.org/' + dataset + '/' + jsonFilename,
                     function (crimeData) {
                         currentLayers.forEach(function(l) {
                             map.removeLayer(l);
@@ -164,39 +162,45 @@ requirejs(
             });
         };
 
-        jquery(document).ready(function() {
-            var map = L.map('map');
+        var setupViz = function(dataset, initLoc) {
+            jquery(document).ready(function() {
+                var map = L.map('map');
 
-            map.on('load', function() { updateMap(map); })
-                .on('viewreset', function() { updateMap(map); })
-                .on('zoomend', function() { updateMap(map); })
-                .on('moveend', function() { updateMap(map); })
-                .on('resize', function() { updateMap(map); });
+                map.on('load', function() { updateMap(dataset, map); })
+                    .on('viewreset', function() { updateMap(dataset, map); })
+                    .on('zoomend', function() { updateMap(dataset, map); })
+                    .on('moveend', function() { updateMap(dataset, map); })
+                    .on('resize', function() { updateMap(dataset, map); });
 
-            /*
-             * Add tile layer for Stamen Toner.
-             *
-             * Copied from http://maps.stamen.com/js/tile.stamen.js?v1.2.3
-             * as it could not be used directly due use of RequireJS
-             * (tile.stamen.js assumes that the 'L' global is available).
-             */
-            L.StamenTileLayer = L.TileLayer.extend({
-                initialize: function(name) {
-                    L.TileLayer.prototype.initialize.call(
-                        this,
-                        'http://{s}tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
-                        {
-                            minZoom: 0,
-                            maxZoom: 20,
-                            subdomains: ['a.', 'b.', 'c.', 'd.'],
-                            scheme: 'xyz',
-                            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>.',
-                        }
-                    );
-                }
+                /*
+                 * Add tile layer for Stamen Toner.
+                 *
+                 * Copied from http://maps.stamen.com/js/tile.stamen.js?v1.2.3
+                 * as it could not be used directly due use of RequireJS
+                 * (tile.stamen.js assumes that the 'L' global is available).
+                 */
+                L.StamenTileLayer = L.TileLayer.extend({
+                    initialize: function(name) {
+                        L.TileLayer.prototype.initialize.call(
+                            this,
+                            'http://{s}tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+                            {
+                                minZoom: 0,
+                                maxZoom: 20,
+                                subdomains: ['a.', 'b.', 'c.', 'd.'],
+                                scheme: 'xyz',
+                                attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>.',
+                            }
+                        );
+                    }
+                });
+                map.addLayer(new L.StamenTileLayer('toner-lite'))
+                    .setView(initLoc, 14);
             });
-            map.addLayer(new L.StamenTileLayer('toner-lite'))
-                .setView(CITY_HALL, 14);
-        });
+        };
+
+        return {
+            setupViz: setupViz
+        };
     }
 );
