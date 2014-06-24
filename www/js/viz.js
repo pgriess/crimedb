@@ -66,7 +66,7 @@ requirejs(
 
         /* TODO: Filter returned regions by map's viewable area */
         var getMetaData = function(map, cb) {
-            jquery.getJSON('meta.json', cb);
+            jquery.getJSON('http://data.crimedb.org/stl/index.json', cb);
         };
 
         var updateMap = function(map) {
@@ -87,7 +87,7 @@ requirejs(
                 currentBounds = bounds;
 
                 jquery.getJSON(
-                    jsonFilename,
+                    'http://data.crimedb.org/stl/' + jsonFilename,
                     function (crimeData) {
                         currentLayers.forEach(function(l) {
                             map.removeLayer(l);

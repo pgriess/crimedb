@@ -1,4 +1,4 @@
-#!/bin/env bash -x
+#!/bin/env bash
 #
 # Copyright 2014 Peter Griess
 #
@@ -29,29 +29,60 @@ cleanup() {
     rm -fr $WORKDIR
 }
 
+do_sync() {
+    local src=$1
+    local dest=$2
+
+    case $dest in
+        s3://*)
+            s3cmd -P -v sync \
+                --delete-removed \
+                $src/ $dest/
+            ;;
+        *)
+            rsync -a --delete $src/ $dest/
+    esac
+}
+
 trap cleanup EXIT
 
-if [[ $# -ne 1 ]] ; then
-    echo >&2 "$EXEC: missing required destination"
+# Read path arguments, stripping trailing '/' characters. This is
+# done for two reasons: S3 doesn't normalize URLs so '//foo' is
+# not the same as '/foo'; and rsync behaves differently with a
+# trailing slash.
+if [[ $# -lt 1 ]] ; then
+    echo >&2 "$EXEC: missing required www destination"
+    exit 1
 fi
-dest=$1
+dest_www=$(echo $1 | sed -e 's:/\+$::g')
 shift
+
+if [[ $# -lt 1 ]] ; then
+    echo >&2 "$EXEC: missing required data destination"
+    exit 1
+fi
+dest_data=$(echo $1 | sed -e 's:/\+$::g')
+shift
+
+if [[ $# -gt 0 ]] ; then
+    echo >&2 "$EXEC: ignoring superfluous arguments"
+fi
+
+# Make sure that the $CRIMEDB_ROOT/data directory exists; there's
+# no particular reason that it needs to. It's existence is just
+# convention
+if [[ ! -d $CRIMEDB_ROOT/data ]] ; then
+    echo >&2 "$EXEC: \$CRIMEDB_ROOT/data does not exist"
+    exit 1
+fi
 
 rsync -a \
     '--exclude=*.swp' '--exclude=cache*' \
-    $CRIMEDB_ROOT/data/ $WORKDIR/
+    $CRIMEDB_ROOT/data $WORKDIR/
+
 rsync -a \
     '--exclude=*.swp' \
-    $CRIMEDB_ROOT/html/ $WORKDIR/
+    $CRIMEDB_ROOT/www $WORKDIR/
 
-case $dest in
-    s3://*)
-        # Strip trailing /, as S3 doesn't normalize multiple '/' chars
-        dest=$(echo $dest | sed -e 's:/$::g')
-        s3cmd -P -v sync \
-            --delete-removed \
-            $WORKDIR/ $dest/
-        ;;
-    *)
-        rsync -a --delete $WORKDIR/ $dest/
-esac
+do_sync $CRIMEDB_ROOT/www $dest_www
+do_sync $CRIMEDB_ROOT/data $dest_data

@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 # Download St. Louis Police Department crime data and write YYYY-MM.json and
-# meta.json files to a directory.
+# index.json files to a directory.
 #
 # NOTES:
 #
-#   - The initial meta.json file was constructed by running hapi/sv/run and
+#   - The initial index.json file was constructed by running hapi/sv/run and
 #     hitting /regions, then hand-editing the results. We should really port
 #     the OSM code to Python and do the missouri-latest.osm manipulation
 #     directly.
@@ -69,7 +69,7 @@ now = utc_tz.localize(
         datetime.datetime.fromtimestamp(
                 time.mktime(time.gmtime())))
 
-with open(os.path.join(args.data_dir, 'meta.json'), 'rt') as mf:
+with open(os.path.join(args.data_dir, 'index.json'), 'rt') as mf:
     meta_obj = json.load(mf)
 region = shapely.geometry.Polygon(
     shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
@@ -77,6 +77,10 @@ region = shapely.geometry.Polygon(
 crimes_by_month_filenames = defaultdict(list)
 for c in crimedb.stl.crimes(cache_dir=args.cache_dir, region=region):
     crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
+
+logging.info('sorting month data')
+for cm, cl in crimes_by_month.items():
+    crimes_by_month[cm] = sorted(cl, key=lambda c: c.time)
 
 logging.info('writing month files')
 for fn, crimes in crimes_by_month_filenames.items():
@@ -89,10 +93,10 @@ for fn, crimes in crimes_by_month_filenames.items():
             mf
         )
 
-logging.info('updating meta.json')
+logging.info('updating index.json')
 
 meta_obj['update_time'] = now.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT)
 meta_obj['files'] = list(sorted(crimes_by_month_filenames.keys()))
 
-with open(os.path.join(args.data_dir, 'meta.json'), 'wt') as mf:
+with open(os.path.join(args.data_dir, 'index.json'), 'wt') as mf:
     json.dump(meta_obj, mf)
