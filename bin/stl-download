@@ -45,6 +45,13 @@ import crimedb.stl
 utc_tz = pytz.timezone('UTC')
 
 root_log_level = logging.ERROR
+logging_levels = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARN': logging.WARN,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL,
+        'FATAL': logging.FATAL}
 
 ap = argparse.ArgumentParser(
         description='''
@@ -60,6 +67,10 @@ ap.add_argument('-v', '--verbose', action='count', dest='verbosity', default=0,
                 help=('increase global logging verbosity; can be used '
                       'multiple times (default: {})'.format(
                             logging.getLevelName(root_log_level))))
+ap.add_argument('--module-verbosity', action='append', default=[],
+                metavar='<module>=<level>',
+                help=('set logging verbosity of <module> to <level>; valid levels '
+                      'are: ' + ', '.join(logging_levels.keys())))
 
 args = ap.parse_args()
 
@@ -68,6 +79,10 @@ logging.basicConfig(
         style='{',
         format='{prog}: {{message}}'.format(
                 prog=os.path.basename(sys.argv[0])))
+
+for mv in args.module_verbosity:
+    name, level = mv.split('=')
+    logging.getLogger(name).setLevel(logging_levels[level])
 
 now = utc_tz.localize(
         datetime.datetime.fromtimestamp(
