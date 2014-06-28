@@ -30,12 +30,16 @@ import re
 import shapely.geometry
 import urllib.request, urllib.parse
 
+
 __BASE_URL = 'http://www.slmpd.org/CrimeReport.aspx'
 
 __SPCS_PROJ = pyproj.Proj(
     init='nad83:2401', units='us-ft', preserve_units=True)
 
 __TZ = pytz.timezone('US/Central')
+
+__LOGGER = logging.getLogger(__name__)
+
 
 # Return a map of global form fields from the ElementTree of a TOC page.
 def __toc_global_form_fields(et):
@@ -101,7 +105,7 @@ def __toc_page_files(tp, cache_dir=None):
 
         response = None
         if not cache_dir or not os.path.exists(fp):
-            logging.debug('{} not found in cache; downloading'.format(fn))
+            __LOGGER.debug('{} not found in cache; downloading'.format(fn))
 
             file_form_fields = global_form_fields.copy()
             file_form_fields['__EVENTTARGET'] = m.group(1)
@@ -139,7 +143,7 @@ def crimes(cache_dir=None, region=None):
     for tp in __toc_pages():
         for file_name, file_contents in __toc_page_files(
                 tp, cache_dir=cache_dir):
-            logging.debug(
+            __LOGGER.debug(
                     'processing STL file: {}'.format(file_name))
 
             cols = None
@@ -168,7 +172,7 @@ def crimes(cache_dir=None, region=None):
                         inverse=True, errcheck=True)
                 crime_point = shapely.geometry.Point(*loc)
                 if region and not region.contains(crime_point):
-                    logging.debug(
+                    __LOGGER.debug(
                             ('crime on row {row} at ({lon}, {lat}) is outside of our region; '
                              'stripping location').format(
                                  row=row_num, lon=loc[0], lat=loc[1]))
