@@ -50,9 +50,9 @@ Download St. Louis Police Department crime data from
 http://www.slmpd.org/Crimereports.shtml and transform it into CrimeDB
 JSON files.
 ''')
-ap.add_argument('--data-dir', default='.',
+ap.add_argument('--data-dir', metavar='<dir>', default='.',
                 help='data directory (default: %(default)s)')
-ap.add_argument('--cache-dir', default=None,
+ap.add_argument('--cache-dir', metavar='<dir>', default=None,
                 help='cache directory')
 ap.add_argument('-v', action='count', dest='verbosity', default=0,
                 help='increase logging verbosity; can be used multiple times')
