@@ -79,9 +79,10 @@ def __toc_pages():
         form_data = urllib.parse.urlencode(form_fields).encode('utf-8')
 
 
-# Iterator which yields (filename, contents) tuples of each CSV file
-# on a given TOC page.
-def __toc_page_files(tp, cache_dir=None):
+# Iterator which yields (filename, callable) tuples of each CSV file
+# on a given TOC page. When invoked, the callable will return a
+# stream of file contents.
+def __toc_page_files(tp):
     et = lxml.etree.parse(tp, lxml.etree.HTMLParser())
     global_form_fields = __toc_global_form_fields(et)
 
@@ -99,58 +100,75 @@ def __toc_page_files(tp, cache_dir=None):
         if not m:
             continue
 
-        fn = fa.text
-        if cache_dir:
-            fp = os.path.join(cache_dir, fn)
-
-        response = None
-        if not cache_dir or not os.path.exists(fp):
-            __LOGGER.debug('{} not found in cache; downloading'.format(fn))
+        def download_file():
+            __LOGGER.debug('downloading {}'.format(fa.text))
 
             file_form_fields = global_form_fields.copy()
             file_form_fields['__EVENTTARGET'] = m.group(1)
             form_data = urllib.parse.urlencode(file_form_fields).encode('utf-8')
-            response = urllib.request.urlopen(__BASE_URL, data=form_data)
 
-        if cache_dir and response:
-            with open(fp, 'wb') as cf:
-                cf.write(response.read())
+            return urllib.request.urlopen(__BASE_URL, data=form_data)
 
-        if cache_dir:
-            with open(fp, 'rb') as cf:
-                yield fn, cf
-        else:
-            assert response
-            yield fn, response
+        yield fa.text, download_file
 
 
-def crimes(cache_dir=None, region=None):
+def __cache_dir(work_dir):
+    cache_dir = os.path.join(work_dir, 'raw')
+    os.makedirs(cache_dir, exist_ok=True)
+
+    return cache_dir
+
+
+def download_raw_files(work_dir):
+    '''
+    Download any missing raw files from the St. Louis Police department server
+    and place them in the appropriate location in the given work directory.
+    '''
+
+    cache_dir = __cache_dir(work_dir)
+
+    for tp in __toc_pages():
+        for file_name, file_fetch in __toc_page_files(tp):
+            file_path = os.path.join(cache_dir, file_name)
+
+            if os.path.exists(file_path):
+                __LOGGER.debug('found {}; skipping'.format(file_name))
+                continue
+
+            with open(file_path, 'wb') as rf:
+                rf.write(file_fetch().read())
+
+
+def crimes(work_dir, region=None, download=True):
     '''
     Iterator which yields Crime objects.
 
     This hits the St. Louis Police Department server and downloads all CSV
     files. It is not a cheap operation.
 
-    cache_dir is a filesystem directory with which to maintain a
-    cache of downloaded files. If None, files will always be
-    downloaded and never cached.
+    work_dir is a filesystem directory with which to maintain state across
+    processing runs.
 
     region is an shapely.geometry object describing the region for
     which we're collecting data. Any crimes found to be outside this
     area will be discarded.
     '''
 
-    for tp in __toc_pages():
-        for file_name, file_contents in __toc_page_files(
-                tp, cache_dir=cache_dir):
-            __LOGGER.debug(
-                    'processing STL file: {}'.format(file_name))
+    if download:
+        download_raw_files(work_dir)
 
+    cache_dir = __cache_dir(work_dir)
+
+    for file_name in os.listdir(cache_dir):
+        __LOGGER.debug(
+                'processing STL file: {}'.format(file_name))
+
+        with open(os.path.join(cache_dir, file_name), 'rb') as rf:
             cols = None
             events = []
 
             csv_reader = csv.reader(
-                    io.TextIOWrapper(file_contents, encoding='utf-8',
+                    io.TextIOWrapper(rf, encoding='utf-8',
                                      errors='replace')
             )
             row_num = 0
