@@ -132,7 +132,7 @@ def __geocode_batch(key, locations, region=None):
             yield None
 
 
-def geocode(key, locations, region=None, batch_size=10):
+def geocode_mapquest(key, locations, region=None, batch_size=10):
     '''
     Geocode the given iterable of locations, returning an iterable of
     GeoJSON objects in the same order as the addresses requested
@@ -147,3 +147,13 @@ def geocode(key, locations, region=None, batch_size=10):
         if not loc_slice:
             break
         yield from __geocode_batch(key, loc_slice, region)
+
+
+def geocode_null(locations):
+    '''
+    A null geocoder that doesn't do any actual geocoding; just yields
+    None for all locations.
+    '''
+
+    for l in locations:
+        yield None

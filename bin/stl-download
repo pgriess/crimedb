@@ -27,6 +27,7 @@
 import argparse
 from collections import defaultdict
 import datetime
+import functools
 import json
 import logging
 import os.path
@@ -40,6 +41,7 @@ import time
 sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
 import crimedb.core
+import crimedb.geocoding
 import crimedb.stl
 
 utc_tz = pytz.timezone('UTC')
@@ -71,6 +73,8 @@ ap.add_argument('--module-verbosity', action='append', default=[],
                 metavar='<module>=<level>',
                 help=('set logging verbosity of <module> to <level>; valid levels '
                       'are: ' + ', '.join(logging_levels.keys())))
+ap.add_argument('--mapquest-api-key', metavar='<key>',
+                help='set MapQuest API key')
 
 args = ap.parse_args()
 
@@ -92,8 +96,16 @@ with open(os.path.join(args.data_dir, 'index.json'), 'rt') as mf:
 region = shapely.geometry.Polygon(
     shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
 
+kwargs = {
+    'region': region}
+if args.mapquest_api_key:
+    kwargs['geocoder'] = functools.partial(
+            crimedb.geocoding.geocode_mapquest,
+            args.mapquest_api_key,
+            region=region)
+
 crimes_by_month_filenames = defaultdict(list)
-for c in crimedb.stl.crimes(args.work_dir, region=region):
+for c in crimedb.stl.crimes(args.work_dir, **kwargs):
     crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
 
 logging.info('sorting month data')

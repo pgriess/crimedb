@@ -19,6 +19,7 @@ http://www.slmpd.org/Crimereports.shtml.
 
 import csv
 import crimedb.core
+import crimedb.geocoding
 import datetime
 import io
 import json
@@ -151,9 +152,41 @@ def __download_raw_files(work_dir):
 
 # Process the given raw file and update JSON files in the work
 # directory.
-def __process_raw_file(work_dir, file_path, region):
+def __process_raw_file(work_dir, file_path, geocoder, region):
     __LOGGER.info('processing STL file {}'.format(
             os.path.basename(file_path)))
+
+    def write_crime_dict(crime_dict, loc):
+        if loc:
+            crime_point = shapely.geometry.Point(*loc)
+            if region and not region.contains(crime_point):
+                __LOGGER.debug(
+                        ('crime on row {row} at ({lon}, {lat}) is outside '
+                         'of our region; stripping location').format(
+                             row=crime_dict['_row_num'], lon=loc[0], lat=loc[1]))
+                loc = None
+
+        date = datetime.datetime.strptime(
+                crime_dict['DateOccur'],
+                '%m/%d/%Y %H:%M')
+
+        c = crimedb.core.Crime(
+                crime_dict['Description'],
+                __TZ.localize(date), loc)
+
+        int_fp = os.path.join(
+                __intermediate_dir(work_dir),
+                datetime.datetime.strftime(date, '%Y-%m'))
+
+        with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
+            f.write(json.dumps(crimedb.core.crime2json_obj(c)))
+            f.write('\n')
+
+    def crime_dict_loc(cd):
+        return '{ILEADSAddress} {ILEADSStreet}, Saint Louis, Missouri'.format(**cd)
+
+
+    geocoding_needed = []
 
     with open(file_path, 'rt', encoding='utf-8', errors='replace') as f:
         cols = None
@@ -172,51 +205,59 @@ def __process_raw_file(work_dir, file_path, region):
                 continue
 
             crime_dict = dict(zip(cols, crime_row))
+            crime_dict['_row_num'] = row_num
 
-            loc = __SPCS_PROJ(
-                    float(crime_dict['XCoord']),
-                    float(crime_dict['YCoord']),
-                    inverse=True, errcheck=True)
-            crime_point = shapely.geometry.Point(*loc)
-            if region and not region.contains(crime_point):
-                __LOGGER.debug(
-                        ('crime on row {row} at ({lon}, {lat}) is outside of our region; '
-                         'stripping location').format(
-                             row=row_num, lon=loc[0], lat=loc[1]))
-                loc = None
+            if float(crime_dict['XCoord']) == 0 and \
+                    float(crime_dict['YCoord']) == 0:
+                if not crime_dict['ILEADSAddress'].strip() or \
+                        not crime_dict['ILEADSStreet'].strip():
+                    loc = None
+                else:
+                    geocoding_needed += [crime_dict]
+                    continue
+            else:
+                loc = __SPCS_PROJ(
+                        float(crime_dict['XCoord']),
+                        float(crime_dict['YCoord']),
+                        inverse=True, errcheck=True)
 
-            date = datetime.datetime.strptime(
-                    crime_dict['DateOccur'],
-                    '%m/%d/%Y %H:%M')
+            write_crime_dict(crime_dict, loc)
 
-            c = crimedb.core.Crime(
-                    crime_dict['Description'],
-                    __TZ.localize(date), loc)
+    for cd, loc in zip(
+            geocoding_needed,
+            geocoder(map(crime_dict_loc, geocoding_needed))):
+        if loc:
+            loc = loc['coordinates']
+            __LOGGER.debug('resolved {addr} to ({lon}, {lat})'.format(
+                    addr=crime_dict_loc(cd), lon=loc[0], lat=loc[1]))
+        else:
+            __LOGGER.debug('failed to resolve {addr}'.format(
+                    addr=crime_dict_loc(cd)))
 
-            int_fp = os.path.join(
-                    __intermediate_dir(work_dir),
-                    datetime.datetime.strftime(date, '%Y-%m'))
-
-            with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
-                f.write(json.dumps(crimedb.core.crime2json_obj(c)))
-                f.write('\n')
+        write_crime_dict(cd, loc)
 
 
-def crimes(work_dir, region=None, download=True):
+def crimes(work_dir, geocoder=crimedb.geocoding.geocode_null,
+           region=None, download=True):
     '''
     Iterator which yields Crime objects.
 
-    work_dir is a filesystem directory with which to maintain state across
+    'work_dir' is a filesystem directory with which to maintain state across
     processing runs.
 
-    region is an shapely.geometry object describing the region for
-    which we're collecting data. Any crimes found to be outside this
-    area will be discarded.
+    'download' indiciates whether or not to download new files.
+
+    'geocoder' is a generator function that takes an interator of
+    addresses and emits locations (or None on failure)
+
+    'region' is a shapely.geometry object describing the region for
+    which we're fetching crimes; locations will be constrained such
+    that they're within this area
     '''
 
     if download:
         for fp in __download_raw_files(work_dir):
-            __process_raw_file(work_dir, fp, region)
+            __process_raw_file(work_dir, fp, geocoder, region)
 
     int_dir = __intermediate_dir(work_dir)
 
