@@ -59,7 +59,7 @@ def __granularity_comparator(a, b):
 
 
 # Geocode the given set of addresses.
-def __geocode_batch(key, locations):
+def __geocode_batch(key, locations, region=None):
     def __location_comparator(a, b):
         # XXX: Take confidence into account as well?
         return __granularity_comparator(
@@ -68,6 +68,15 @@ def __geocode_batch(key, locations):
 
     query_params = [('key', key)]
     query_params += [('location', l) for l in locations]
+
+    if region:
+        query_params += [
+                ('boundingBox',
+                 '{},{},{},{}'.format(
+                        region.bounds[3],
+                        region.bounds[0],
+                        region.bounds[1],
+                        region.bounds[2]))]
 
     url = 'http://open.mapquestapi.com/geocoding/v1/batch?' + \
         urllib.parse.urlencode(query_params)
@@ -113,7 +122,7 @@ def __geocode_batch(key, locations):
             yield None
 
 
-def geocode(key, locations, batch_size=10):
+def geocode(key, locations, region=None, batch_size=10):
     '''
     Geocode the given iterable of locations, returning an iterable of
     GeoJSON objects in the same order as the addresses requested
@@ -127,4 +136,4 @@ def geocode(key, locations, batch_size=10):
         loc_slice = [l for l in islice(loc_iter, batch_size)]
         if not loc_slice:
             break
-        yield from __geocode_batch(key, loc_slice)
+        yield from __geocode_batch(key, loc_slice, region)
