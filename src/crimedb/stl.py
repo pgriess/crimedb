@@ -21,6 +21,7 @@ import csv
 import crimedb.core
 import datetime
 import io
+import json
 import logging
 import lxml, lxml.etree
 import os.path
@@ -119,13 +120,18 @@ def __cache_dir(work_dir):
     return cache_dir
 
 
-def download_raw_files(work_dir):
-    '''
-    Download any missing raw files from the St. Louis Police department server
-    and place them in the appropriate location in the given work directory.
-    '''
+def __intermediate_dir(work_dir):
+    int_dir = os.path.join(work_dir, 'intermediate')
+    os.makedirs(int_dir, exist_ok=True)
 
+    return int_dir
+
+
+# Download any missing raw files and place them in the appropriate location in
+# the work directory. Returns paths to the files downloaded.
+def __download_raw_files(work_dir):
     cache_dir = __cache_dir(work_dir)
+    file_paths = []
 
     for tp in __toc_pages():
         for file_name, file_fetch in __toc_page_files(tp):
@@ -138,13 +144,67 @@ def download_raw_files(work_dir):
             with open(file_path, 'wb') as rf:
                 rf.write(file_fetch().read())
 
+            file_paths += [file_path]
+
+    return file_paths
+
+
+# Process the given raw file and update JSON files in the work
+# directory.
+def __process_raw_file(work_dir, file_path, region):
+    __LOGGER.info('processing STL file {}'.format(
+            os.path.basename(file_path)))
+
+    with open(file_path, 'rt', encoding='utf-8', errors='replace') as f:
+        cols = None
+        events = []
+
+        csv_reader = csv.reader(f)
+        row_num = 0
+        for crime_row in csv_reader:
+            row_num += 1
+            if cols is None:
+                # Normalize field names that can differ in some months
+                if 'DateOccured' in crime_row:
+                    crime_row[crime_row.index('DateOccured')] = 'DateOccur'
+
+                cols = crime_row
+                continue
+
+            crime_dict = dict(zip(cols, crime_row))
+
+            loc = __SPCS_PROJ(
+                    float(crime_dict['XCoord']),
+                    float(crime_dict['YCoord']),
+                    inverse=True, errcheck=True)
+            crime_point = shapely.geometry.Point(*loc)
+            if region and not region.contains(crime_point):
+                __LOGGER.debug(
+                        ('crime on row {row} at ({lon}, {lat}) is outside of our region; '
+                         'stripping location').format(
+                             row=row_num, lon=loc[0], lat=loc[1]))
+                loc = None
+
+            date = datetime.datetime.strptime(
+                    crime_dict['DateOccur'],
+                    '%m/%d/%Y %H:%M')
+
+            c = crimedb.core.Crime(
+                    crime_dict['Description'],
+                    __TZ.localize(date), loc)
+
+            int_fp = os.path.join(
+                    __intermediate_dir(work_dir),
+                    datetime.datetime.strftime(date, '%Y-%m'))
+
+            with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
+                f.write(json.dumps(crimedb.core.crime2json_obj(c)))
+                f.write('\n')
+
 
 def crimes(work_dir, region=None, download=True):
     '''
     Iterator which yields Crime objects.
-
-    This hits the St. Louis Police Department server and downloads all CSV
-    files. It is not a cheap operation.
 
     work_dir is a filesystem directory with which to maintain state across
     processing runs.
@@ -155,51 +215,14 @@ def crimes(work_dir, region=None, download=True):
     '''
 
     if download:
-        download_raw_files(work_dir)
+        for fp in __download_raw_files(work_dir):
+            __process_raw_file(work_dir, fp, region)
 
-    cache_dir = __cache_dir(work_dir)
+    int_dir = __intermediate_dir(work_dir)
 
-    for file_name in os.listdir(cache_dir):
-        __LOGGER.debug(
-                'processing STL file: {}'.format(file_name))
-
-        with open(os.path.join(cache_dir, file_name), 'rb') as rf:
-            cols = None
-            events = []
-
-            csv_reader = csv.reader(
-                    io.TextIOWrapper(rf, encoding='utf-8',
-                                     errors='replace')
-            )
-            row_num = 0
-            for crime_row in csv_reader:
-                row_num += 1
-                if cols is None:
-                    # Normalize field names that can differ in some months
-                    if 'DateOccured' in crime_row:
-                        crime_row[crime_row.index('DateOccured')] = 'DateOccur'
-
-                    cols = crime_row
-                    continue
-
-                crime_dict = dict(zip(cols, crime_row))
-
-                loc = __SPCS_PROJ(
-                        float(crime_dict['XCoord']),
-                        float(crime_dict['YCoord']),
-                        inverse=True, errcheck=True)
-                crime_point = shapely.geometry.Point(*loc)
-                if region and not region.contains(crime_point):
-                    __LOGGER.debug(
-                            ('crime on row {row} at ({lon}, {lat}) is outside of our region; '
-                             'stripping location').format(
-                                 row=row_num, lon=loc[0], lat=loc[1]))
-                    loc = None
-
-                date = datetime.datetime.strptime(
-                        crime_dict['DateOccur'],
-                        '%m/%d/%Y %H:%M')
-
-                yield crimedb.core.Crime(
-                        crime_dict['Description'],
-                        __TZ.localize(date), loc)
+    for file_name in os.listdir(int_dir):
+        fp = os.path.join(int_dir, file_name)
+        with open(fp, 'rt', encoding='utf-8', errors='replace') as rf:
+            for l in rf:
+                yield crimedb.core.json_obj2crime(
+                        json.loads(l.strip()))

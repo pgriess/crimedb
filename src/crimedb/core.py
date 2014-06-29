@@ -56,3 +56,20 @@ def crime2json_obj(crime):
         }
 
     return jo
+
+
+def json_obj2crime(jo):
+    '''
+    The inverse of crime2json_obj().
+    '''
+
+    description = jo['description']
+    time = datetime.datetime.strptime(
+            jo['time'], RFC3999_STRFTIME_FORMAT)
+
+    location = None
+    if 'geo' in jo:
+        location = tuple(jo['geo']['coordinates'])
+
+    return Crime(description, time, location)
+
