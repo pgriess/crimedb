@@ -29,6 +29,7 @@ import io
 from itertools import islice
 import json
 import logging
+import shapely.geometry
 import traceback
 import urllib.error
 import urllib.parse
@@ -97,8 +98,17 @@ def __geocode_batch(key, locations, region=None):
             #      this seems to be the case in practice.
             assert result['providedLocation']['location'] == loc
 
-            # Location was completely unknown
-            if not result['locations']:
+            locs = result['locations']
+
+            # Filter out any locations not within our region (if specified)
+            if region:
+                locs = [l for l in locs if
+                        region.contains(shapely.geometry.Point(
+                            l['displayLatLng']['lng'],
+                            l['displayLatLng']['lat']))]
+
+            # No locations found within our region
+            if not locs:
                 yield None
                 continue
 
