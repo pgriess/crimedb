@@ -35,7 +35,9 @@ import urllib.request, urllib.parse
 
 __BASE_URL = 'http://www.slmpd.org/CrimeReport.aspx'
 
-__SPCS_PROJ = pyproj.Proj(
+# Per the FAQ http://www.slmpd.org/Crime/CrimeDataFrequentlyAskedQuestions.pdf,
+# (XCoord, YCoord) is NAD83.
+__PROJ = pyproj.Proj(
     init='nad83:2401', units='us-ft', preserve_units=True)
 
 __TZ = pytz.timezone('US/Central')
@@ -216,7 +218,7 @@ def __process_raw_file(work_dir, file_path, geocoder, region):
                     geocoding_needed += [crime_dict]
                     continue
             else:
-                loc = __SPCS_PROJ(
+                loc = __PROJ(
                         float(crime_dict['XCoord']),
                         float(crime_dict['YCoord']),
                         inverse=True, errcheck=True)
