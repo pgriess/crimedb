@@ -240,7 +240,7 @@ def __process_raw_file(work_dir, file_path, geocoder, region):
 
 
 def crimes(work_dir, geocoder=crimedb.geocoding.geocode_null,
-           region=None, download=True):
+           region=None, download=True, **kwargs):
     '''
     Iterator which yields Crime objects.
 
