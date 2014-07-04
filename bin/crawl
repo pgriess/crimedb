@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Download St. Louis Police Department crime data and write YYYY-MM.json and
-# index.json files to a directory.
+# Crawl crime data and write YYYY-MM.json and index.json files to a directory.
 #
 # NOTES:
 #
