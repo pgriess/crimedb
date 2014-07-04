@@ -103,6 +103,14 @@ if args.list_regions:
         print('  {}'.format(region_name))
     sys.exit(0)
 
+if not args.region:
+    args.region = crime_iterators.keys()
+else:
+    for region_name in args.region:
+        if region_name not in crime_iterators:
+            print('invalid region: {}'.format(region_name), file=sys.stderr)
+            sys.exit(1)
+
 # Set up keyword arguments for crime iterators
 kwargs = {
     'download': not args.no_download}
