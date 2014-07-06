@@ -112,38 +112,14 @@ class OSMParserCallbacks:
         pass
 
 
-ap = argparse.ArgumentParser(
-        usage='''
-  osm-view [options] <path> <relation-id>
-  osm-view [options] <path>
-''',
-        description='''
-View a relation in an OSM data dump in a web app. This is intended as an aid
-for relation selection. The first usage pattern works on .osm XML files. It
-will likely take several minutes to run on large dumps. To ameliorate this, the
-'-g' option can be used to save the resuting GeoJSON output to a file for later
-usage. The second usage pattern works with the output of the -g option in the
-first pattern. This should run much more quickly.
-''',
-        parents=[crimedb.cli.logging_argument_parser])
-ap.add_argument('file_path', metavar='<path>',
-                help='path to the file to view')
-ap.add_argument('relation', metavar='<relation-id>', nargs='?',
-                help='identifier for the OSM relation to view')
-ap.add_argument('-g', dest='gj_output', metavar='<path>',
-                default=None, help='serialize to the given GeoJSON file')
+def create_cmd(args):
+    crimedb.cli.process_logging_args(args)
 
-args = ap.parse_args()
-crimedb.cli.process_logging_args(args)
-
-if not args.relation:
-    with open(args.file_path, 'rt', encoding='utf-8') as f:
-        polygon = json.load(f)
-else:
-    rids = set([int(args.relation)])
-
+    # Grab rids from CLI arguments and look up relations
+    rids = set([args.relation])
+    logging.debug('looking for rids={}'.format(pprint.pformat(rids)))
     opc = OSMParserCallbacks(rids=rids)
-    with open(args.file_path, 'rb') as osm_f:
+    with open(args.path, 'rb') as osm_f:
         with contextlib.closing(
                 lxml.etree.XMLParser(target=opc)) as xp:
             while True:
@@ -154,13 +130,13 @@ else:
     relations = opc.relations
     logging.info('matched {} relations'.format(len(relations)))
 
-    # Grab ways from the relation
+    # Grab wids from the relation and look up ways
     wids = set()
     for r in opc.relations.values():
         wids |= set(r.wids)
     logging.debug('looking for wids={}'.format(pprint.pformat(wids)))
     opc = OSMParserCallbacks(wids=wids)
-    with open(args.file_path, 'rb') as osm_f:
+    with open(args.path, 'rb') as osm_f:
         with contextlib.closing(
                 lxml.etree.XMLParser(target=opc)) as xp:
             while True:
@@ -171,13 +147,13 @@ else:
     ways = opc.ways
     logging.info('matched {} ways'.format(len(ways)))
 
-    # Grab nodes from the ways
+    # Grab nids from the ways and look up nodes
     nids = set()
     for w in opc.ways.values():
         nids |= set(w.nids)
     logging.debug('looking for nids={}'.format(pprint.pformat(nids)))
     opc = OSMParserCallbacks(nids=nids)
-    with open(args.file_path, 'rb') as osm_f:
+    with open(args.path, 'rb') as osm_f:
         with contextlib.closing(
                 lxml.etree.XMLParser(target=opc)) as xp:
             while True:
@@ -215,22 +191,34 @@ else:
             assert way_nodes[-1] == relation_nodes[0]
             relation_nodes = way_nodes[:-1] + relation_nodes
 
-    polygon = {
-        'type': 'Polygon',
-        'tags': relation.tags,
-        'coordinates': [
-            [(n.lon, n.lat) for n in relation_nodes],
-        ],
+    region = {
+        'geo': {
+            'type': 'Polygon',
+            'coordinates': [
+                [(n.lon, n.lat) for n in relation_nodes],
+            ],
+        },
     }
 
-    if args.gj_output:
-        with open(args.gj_output, 'wt', encoding='utf-8') as f:
-            f.write(json.dumps(polygon))
+    if 'name' in relation.tags:
+        region['name'] = relation.tags['name']
+
+    sys.stdout.write(
+            json.dumps(
+                region,
+                ensure_ascii=False,
+                indent=4,
+                sort_keys=True))
+    sys.stdout.write('\n')
 
 
-# Now that we've got the GeoJSON polygon, construct a one-page
-# webapp to view it
-html_content = '''
+def view_cmd(args):
+    crimedb.cli.process_logging_args(args)
+
+    with open(args.path, 'rt', encoding='utf-8') as f:
+        ro = json.load(f)
+
+    html_content = '''
 <html>
     <head>
         <title>{{tags.name}}</title>
@@ -279,24 +267,57 @@ html_content = '''
 </html>
 '''
 
-with tempfile.TemporaryDirectory() as temp_dir:
-    view_path = os.path.join(temp_dir, 'view.html')
-    context = polygon.copy()
-    context['coordinates'] = \
-            [{'lon': c[0], 'lat': c[1]} for c in context['coordinates'][0]]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        view_path = os.path.join(temp_dir, 'view.html')
+        shape = shapely.geometry.Polygon(shell=[
+                tuple(c) for c in ro['geo']['coordinates'][0]])
+        centroid = shape.centroid
 
-    shape = shapely.geometry.Polygon(shell=[
-            tuple(c) for c in polygon['coordinates'][0]])
-    centroid = shape.centroid
+        context = {
+            'coordinates':
+                [{'lon': c[0], 'lat': c[1]} for c in ro['geo']['coordinates'][0]],
+            'center': {'lon': centroid.x, 'lat': centroid.y},
+            'zoom': 13
+        }
+        with open(view_path, 'wt', encoding='utf-8') as f:
+            f.write(pystache.render(html_content, context))
 
-    context['center'] = {'lon': centroid.x, 'lat': centroid.y}
-    context['zoom'] = 13
-    with open(view_path, 'wt', encoding='utf-8') as f:
-        f.write(pystache.render(html_content, context))
+        rc = subprocess.call(['open', view_path])
+        if rc:
+            logging.error('view failed with exit code {}'.format(rc))
+            sys.exit(rc)
 
-    rc = subprocess.call(['open', view_path])
-    if rc:
-        logging.error('view failed with exit code {}'.format(rc))
-        sys.exit(rc)
+        input('Press <enter> to exit application\n')
 
-    input('Press <enter> to exit application\n')
+
+ap = argparse.ArgumentParser(
+        description='Work with CrimeDB region files.',
+        parents=[crimedb.cli.logging_argument_parser])
+sp = ap.add_subparsers()
+
+create_parser = sp.add_parser(
+        'create',
+        help='create a new region file from an OSM XML dump',
+        description='''
+Create a new region file from an OSM XML dump. The resulting region file is
+written to stdout.
+''')
+create_parser.add_argument(
+        'path', metavar='<path>',
+        help='path to the OSM XML file to use as a source for our region')
+create_parser.add_argument(
+        'relation', metavar='<id>', type=int,
+        help=('identifier for the OSM relation from which to create our '
+              'region'))
+create_parser.set_defaults(func=create_cmd)
+
+view_parser = sp.add_parser(
+        'view',
+        help='view a region file')
+view_parser.add_argument(
+        'path', metavar='<path>',
+        help='path to the region file to view')
+view_parser.set_defaults(func=view_cmd)
+
+args = ap.parse_args()
+args.func(args)
