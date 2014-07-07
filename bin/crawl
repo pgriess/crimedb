@@ -58,7 +58,7 @@ Download crime data from original sources and transform it into
 CrimeDB JSON files.
 ''',
         parents=[crimedb.cli.logging_argument_parser])
-ap.add_argument('region', nargs='*', metavar='<region>',
+ap.add_argument('region_names', nargs='*', metavar='<region>',
                 help=('fetch data from the given region (default: all '
                       'regions); use --list-regions to see a list of all '
                       'valid regions'))
@@ -81,10 +81,10 @@ if args.list_regions:
         print('  {}'.format(region_name))
     sys.exit(0)
 
-if not args.region:
-    args.region = crime_iterators.keys()
+if not args.region_names:
+    args.region_names = crime_iterators.keys()
 else:
-    for region_name in args.region:
+    for region_name in args.region_names:
         if region_name not in crime_iterators:
             print('invalid region: {}'.format(region_name), file=sys.stderr)
             sys.exit(1)
@@ -92,27 +92,29 @@ else:
 # Set up keyword arguments for crime iterators
 kwargs = {
     'download': not args.no_download}
-if args.mapquest_api_key:
-    kwargs['geocoder'] = functools.partial(
-            crimedb.geocoding.geocode_mapquest,
-            args.mapquest_api_key,
-            region=region)
 
 now = utc_tz.localize(
         datetime.datetime.fromtimestamp(
                 time.mktime(time.gmtime())))
 
-for region_name in args.region:
+for region_name in args.region_names:
     work_dir = os.path.join(args.work_dir, region_name)
     data_dir = os.path.join(args.data_dir, region_name)
 
     with open(os.path.join(data_dir, 'index.json'), 'rt') as mf:
         meta_obj = json.load(mf)
-    region = shapely.geometry.Polygon(
-        shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
 
     region_kwargs = kwargs.copy()
+
+    region = shapely.geometry.Polygon(
+        shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
     region_kwargs['region'] = region
+
+    if args.mapquest_api_key:
+        region_kwargs['geocoder'] = functools.partial(
+                crimedb.geocoding.geocode_mapquest,
+                args.mapquest_api_key,
+                region=region)
 
     crimes_by_month_filenames = defaultdict(list)
     for c in crime_iterators[region_name](work_dir, **region_kwargs):
