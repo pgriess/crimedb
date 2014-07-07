@@ -77,7 +77,7 @@ if [[ ! -d $CRIMEDB_ROOT/data ]] ; then
 fi
 
 rsync -a \
-    '--exclude=*.swp' '--exclude=cache*' \
+    '--exclude=*.swp' \
     $CRIMEDB_ROOT/data $WORKDIR/
 
 rsync -a \
