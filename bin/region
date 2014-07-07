@@ -277,7 +277,7 @@ def view_cmd(args):
             'coordinates':
                 [{'lon': c[0], 'lat': c[1]} for c in ro['geo']['coordinates'][0]],
             'center': {'lon': centroid.x, 'lat': centroid.y},
-            'zoom': 13
+            'zoom': 10,
         }
         with open(view_path, 'wt', encoding='utf-8') as f:
             f.write(pystache.render(html_content, context))
