@@ -25,7 +25,7 @@ class Crime:
     '''
     A single crime.
     '''
-    
+
     def __init__(self, description, time, location):
         '''
         Create a new Crime object.

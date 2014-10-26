@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# TODO: 
+# TODO:
 #
 #   - Figure out what's causing "This key is not authorized for this
 #     service. If you do not have a key, you can obtain a free key by

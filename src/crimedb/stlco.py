@@ -30,7 +30,7 @@
 #         what's new
 #       - Append records as JSON objects (one per line) to a single master
 #         file. This can serve as both our record of all GlobalIDs seen, and
-#         a cache to allow re-processing 
+#         a cache to allow re-processing
 
 '''
 Process crime data from the St. Louis County Police Department at
@@ -65,7 +65,7 @@ def __cache_dir(work_dir):
 
 def __download(work_dir):
     cache_dir = __cache_dir(work_dir)
-    
+
     # Get the list of GlobalIDs that we've already seen
     gids = set()
     incidents_path = os.path.join(cache_dir, 'incidents')

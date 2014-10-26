@@ -98,7 +98,7 @@ class OSMParserCallbacks:
 
     def end(self, tag):
         self._tag_stack.pop()
-        
+
         if tag in set(['node', 'way', 'relation']):
             self._id_stack.pop()
 
