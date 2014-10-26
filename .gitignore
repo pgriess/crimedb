@@ -3,3 +3,4 @@ solr/*/data/*
 *.swp
 *.pyc
 data/
+work/
