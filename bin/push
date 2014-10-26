@@ -41,10 +41,32 @@ do_sync() {
             ;;
         *)
             rsync -a --delete $src/ $dest/
+            ;;
     esac
 }
 
+usage() {
+    cat >&2 <<EOF
+usage: $EXEC [options] <www-dest> <data-dest>
+
+Puhes data from \$CRIMEDB_ROOT/www to <www-dest> and \$CRIMEDB_ROOT/data to
+<data-dest>. The destinations can either be directory paths or s3:// URLs.
+
+Options:
+  -h                show help
+EOF
+}
+
 trap cleanup EXIT
+
+while getopts 'h' OPTNAME ; do
+    case $OPTNAME in
+        h)
+            usage
+            exit 0
+            ;;
+    esac
+done
 
 # Read path arguments, stripping trailing '/' characters. This is
 # done for two reasons: S3 doesn't normalize URLs so '//foo' is
@@ -52,6 +74,7 @@ trap cleanup EXIT
 # trailing slash.
 if [[ $# -lt 1 ]] ; then
     echo >&2 "$EXEC: missing required www destination"
+    usage
     exit 1
 fi
 dest_www=$(echo $1 | sed -e 's:/\+$::g')
@@ -59,13 +82,16 @@ shift
 
 if [[ $# -lt 1 ]] ; then
     echo >&2 "$EXEC: missing required data destination"
+    usage
     exit 1
 fi
 dest_data=$(echo $1 | sed -e 's:/\+$::g')
 shift
 
 if [[ $# -gt 0 ]] ; then
+    usage
     echo >&2 "$EXEC: ignoring superfluous arguments"
+    exit 1
 fi
 
 # Make sure that the $CRIMEDB_ROOT/data directory exists; there's
