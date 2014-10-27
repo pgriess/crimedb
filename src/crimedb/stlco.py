@@ -49,7 +49,7 @@ import urllib.parse
 import urllib.request
 
 
-__QUERY_URL = ('http://maptest.stlouisco.com/arcgis/rest/services/'
+__QUERY_URL = ('http://maps.stlouisco.com/arcgis/rest/services/'
                'Police/AGS_Crimes/MapServer/0/query')
 
 __TZ = pytz.timezone('US/Central')
