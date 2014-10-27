@@ -45,17 +45,18 @@ import crimedb.geocoding
 import crimedb.stl
 import crimedb.stlco
 
-utc_tz = pytz.timezone('UTC')
+UTC_TZ = pytz.timezone('UTC')
 
-crime_iterators = {
+CRIME_ITERATORS = {
     'stl': crimedb.stl.crimes,
     'stlco': crimedb.stlco.crimes,
 }
 
+
 ap = argparse.ArgumentParser(
         description='''
-Download crime data from original sources and transform it into
-CrimeDB JSON files.
+Download crime data from original sources and transform it into CrimeDB JSON
+files.
 ''',
         parents=[crimedb.cli.logging_argument_parser])
 ap.add_argument('region_names', nargs='*', metavar='<region>',
@@ -77,15 +78,15 @@ args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
 
 if args.list_regions:
-    for region_name in sorted(crime_iterators):
+    for region_name in sorted(CRIME_ITERATORS):
         print('  {}'.format(region_name))
     sys.exit(0)
 
 if not args.region_names:
-    args.region_names = crime_iterators.keys()
+    args.region_names = CRIME_ITERATORS.keys()
 else:
     for region_name in args.region_names:
-        if region_name not in crime_iterators:
+        if region_name not in CRIME_ITERATORS:
             print('invalid region: {}'.format(region_name), file=sys.stderr)
             sys.exit(1)
 
@@ -93,7 +94,7 @@ else:
 kwargs = {
     'download': not args.no_download}
 
-now = utc_tz.localize(
+now = UTC_TZ.localize(
         datetime.datetime.fromtimestamp(
                 time.mktime(time.gmtime())))
 
@@ -117,7 +118,7 @@ for region_name in args.region_names:
                 region=region)
 
     crimes_by_month_filenames = defaultdict(list)
-    for c in crime_iterators[region_name](work_dir, **region_kwargs):
+    for c in CRIME_ITERATORS[region_name](work_dir, **region_kwargs):
         crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
 
     logging.info('sorting month data')
