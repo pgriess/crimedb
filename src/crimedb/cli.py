@@ -18,6 +18,8 @@ Utilities for CLI tools in CrimeDB.
 
 import argparse
 import logging
+import os.path
+import re
 
 __root_log_level = logging.ERROR
 __logging_levels = {
@@ -59,3 +61,57 @@ def process_logging_args(args):
     for mv in args.module_verbosity:
         name, level = mv.split('=')
         logging.getLogger(name).setLevel(__logging_levels[level])
+
+
+config_argument_parser = argparse.ArgumentParser(add_help=False)
+'''
+An ArgumentParser instance that suports configuration processing.
+'''
+
+config_argument_parser.add_argument(
+        '--config', metavar='<file>',
+        help='read configuration data from the given config file')
+
+
+def process_config_args(args, defaults={}):
+    '''
+    Process arguments belonging to config_argument_parser.
+
+    Default values for options must be specified using the 'defaults' parameter
+    rather than via the argparse add_argument() method. We need this so that we
+    can detect when an option has been set via the commandline.
+    '''
+
+    if not args.config:
+        return
+
+    with open(args.config, 'r') as fp:
+        line_no = 0
+        for l in fp:
+            line_no += 1
+
+            if re.match(r'^\s*(#.*)?$', l):
+                continue
+
+            k, v = re.split(r'\s+', l.strip(), 1)
+            assert hasattr(args, k)
+
+            if getattr(args, k) is not None:
+                continue
+
+            if k in defaults:
+                if type(defaults[k]) is bool:
+                    assert v in ['True', 'False']
+
+                    if v == 'True':
+                        v = True
+                    else:
+                        v = False
+                else:
+                    v = type(defaults[k])(v)
+
+            setattr(args, k, v)
+
+    for k, v in defaults.items():
+        if getattr(args, k) is None:
+            setattr(args, k, v)
