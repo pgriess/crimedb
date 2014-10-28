@@ -1,0 +1,16 @@
+#!/bin/bash -e
+#
+# Update the world.
+
+CRIMEDB_ROOT=$(dirname $0)/..
+
+printf "[%s] Beginning crawl\n" "$(date)"
+$CRIMEDB_ROOT/bin/crawl -vvvv \
+    --data-dir=$CRIMEDB_ROOT/data \
+    --work-dir=$CRIMEDB_ROOT/work \
+    --config=$HOME/.crimedb/crawl_config
+printf "[%s] Finished crawl\n" "$(date)"
+
+printf "[%s] Beginning push\n" "$(date)"
+$CRIMEDB_ROOT/bin/push s3://www.crimedb.org s3://data.crimedb.org
+printf "[%s] Finished push\n" "$(date)"
