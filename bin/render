@@ -1,0 +1,119 @@
+#!/bin/env python3.3
+#
+# Copyright 2014 Peter Griess
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Process raw CrimeDB data files and render optimized data for www.
+
+import argparse
+import json
+import logging
+import math
+import os.path
+import shapely.geometry
+import sys
+
+# Add src/ directory to PYTHONPATH so that this can be run without the operator
+# having to configure that manually
+sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
+
+import crimedb.cli
+import crimedb.core
+
+# Grid size in lat/lon degrees
+GRID_SIZE = 0.002
+
+ap = argparse.ArgumentParser(
+        description='''
+Download crime data from original sources and transform it into CrimeDB JSON
+files.
+''',
+        parents=[
+            crimedb.cli.logging_argument_parser,
+            crimedb.cli.config_argument_parser])
+ap.add_argument('data_dir', metavar='<data-dir>',
+                help=('read CrimeDB JSON raw data files from this directory'))
+ap.add_argument('www_dir', metavar='<www-dir>',
+                help=('write CrimeDB WWW JSON data files to this directory'))
+args = ap.parse_args()
+crimedb.cli.process_logging_args(args)
+crimedb.cli.process_config_args(args, defaults={})
+
+with open(os.path.join(args.data_dir, 'index.json'), 'rt') as mf:
+    meta_obj = json.load(mf)
+
+region = shapely.geometry.Polygon(
+    shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
+
+# Compute our bounding box, snapped to GRID_SIZE
+lon_min, lat_min, lon_max, lat_max = region.bounds
+logging.info('Bounding box is ({}, {}), ({}, {})'.format(
+    lon_min, lat_min, lon_max, lat_max))
+lon_min -= lon_min % GRID_SIZE
+lat_min -= lat_min % GRID_SIZE
+lon_max += GRID_SIZE - (lon_max % GRID_SIZE)
+lat_max += GRID_SIZE - (lat_max % GRID_SIZE)
+
+# Compute grid dimensions
+grid_width = int(round((lon_max - lon_min) / GRID_SIZE))
+grid_height =int(round((lat_max - lat_min) / GRID_SIZE))
+logging.info('Rendering into {} x {} grid'.format(grid_width, grid_height))
+
+# Create an empty grid, populated with initial values of 0 for cells that are
+# in our region and -1 those that are not
+grid = []
+for x in range(0, grid_width):
+    col = []
+    for y in range(0, grid_height):
+        cell = shapely.geometry.box(
+                lon_min + x * GRID_SIZE,
+                lat_min + y * GRID_SIZE,
+                lon_min + (x + 1) * GRID_SIZE,
+                lat_min + (y + 1) * GRID_SIZE)
+        v = 0 if cell.intersects(region) else -1
+        col += [v]
+    grid.append(col)
+
+# Read crime data and populate the grid with aggregates
+with open(os.path.join(args.data_dir, meta_obj['files'][-1]), 'rt') as cf:
+    crimes_obj = json.load(cf)
+
+for c in crimes_obj['crimes']:
+    # Some crimes could not be geocoded; skip them
+    if 'geo' not in c:
+        continue
+
+    lon, lat = c['geo']['coordinates']
+    assert lon > lon_min and lon < lon_max
+    assert lat > lat_min and lat < lat_max
+
+    x = math.floor((lon - lon_min) / GRID_SIZE)
+    y = math.floor((lat - lat_min) / GRID_SIZE)
+    assert x >= 0 and x < grid_width
+    assert y >= 0 and y < grid_height
+
+    assert grid[x][y] >= 0
+    grid[x][y] += 1
+
+# Render the JSON output file
+jo = {
+    'origin': {
+        'type': 'Point',
+        'coordinates': [lon_min, lat_min]
+    },
+    'grid_size': GRID_SIZE,
+    'grid': grid
+}
+
+json.dump(jo, sys.stdout)
