@@ -44,8 +44,6 @@ files.
             crimedb.cli.config_argument_parser])
 ap.add_argument('data_dir', metavar='<data-dir>',
                 help=('read CrimeDB JSON raw data files from this directory'))
-ap.add_argument('www_dir', metavar='<www-dir>',
-                help=('write CrimeDB WWW JSON data files to this directory'))
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
 crimedb.cli.process_config_args(args, defaults={})
