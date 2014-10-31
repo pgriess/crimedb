@@ -4,3 +4,4 @@ solr/*/data/*
 *.pyc
 data/
 work/
+www/d/*/*.json

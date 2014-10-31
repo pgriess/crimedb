@@ -62,13 +62,21 @@ define(
         var legendLayer = null;
         var currentBounds = null;
 
+        var getGridData = function(dataset, cb) {
+            jquery.getJSON('//www.crimedb.org/d/' + dataset + '/grid.json', cb);
+        };
+
         /* TODO: Filter returned regions by map's viewable area */
         var getMetaData = function(dataset, cb) {
-            jquery.getJSON('http://data.crimedb.org/' + dataset + '/', cb);
+            getGridData(dataset, function(gd) {
+                jquery.getJSON('//data.crimedb.org/' + dataset + '/', function(md) {
+                    cb(md, gd);
+                });
+            });
         };
 
         var updateMap = function(dataset, map) {
-            getMetaData(dataset, function(md) {
+            getMetaData(dataset, function(md, gd) {
                 var bounds = map.getBounds();
 
                 // Map hasn't changed; nothing to do
@@ -76,89 +84,94 @@ define(
                     return;
                 }
 
+                currentBounds = bounds;
+
+                // Update the description text
                 var jsonFilename = md['files'][md.files.length - 1];
                 var year = jsonFilename.split('-')[0];
                 var month = new Number(jsonFilename.split('.')[0].split('-')[1]);
                 $('#from-label').text(
                     'from ' + MONTHS[month.valueOf() - 1] + ' ' + year);
 
-                currentBounds = bounds;
+                // Clear current layers
+                currentLayers.forEach(function(l) {
+                    map.removeLayer(l);
+                });
 
-                jquery.getJSON(
-                    'http://data.crimedb.org/' + dataset + '/' + jsonFilename,
-                    function (crimeData) {
-                        currentLayers.forEach(function(l) {
-                            map.removeLayer(l);
-                        });
+                if (legendLayer) {
+                    map.removeLayer(legendLayer);
+                    jquery('.legend').remove();
+                }
 
-                        if (legendLayer) {
-                            map.removeLayer(legendLayer);
-                            jquery('.legend').remove();
+                // Run over our grid and aggregate some data for each of our
+                // cells: an array of counts for use in computing percentiles,
+                // and the GeoJSON objects for rendering
+                var crimeCounts = Array();
+                var crimeGeoJson = Array();
+                for (var x = 0; x < gd.grid.length; ++x) {
+                    for (var y = 0; y < gd.grid[x].length; ++y) {
+                        if (gd.grid[x][y] < 0) {
+                            continue;
                         }
 
-                        var crimeDataGrid = vizUtil.getCrimeGridFromData(
-                            vizUtil.leafletBoundsToGeoJSON(map.getBounds()),
-                            crimeData.crimes,
-                            GRID_SIZE
-                        );
-                        var crimeGeoJson = vizUtil.getGeoJSONFromCrimeGrid(
-                            vizUtil.leafletBoundsToGeoJSON(map.getBounds()),
-                            crimeDataGrid,
-                            GRID_SIZE
-                        );
-                        var colorBuckets = vizUtil.computePercentiles(
-                            crimeDataGrid.reduce(
-                                function(acc, v) { return acc.concat(v); },
-                                []
-                            ),
-                            GRID_PERCENTILES
-                        );
+                        crimeCounts.push(gd.grid[x][y]);
 
-                        var l = L.geoJson(crimeGeoJson, {
-                            style: function (f) {
-                                return {
-                                    color: GRID_COLORS[
-                                        vizUtil.bucketForValue(
-                                            f.properties.crimeCount,
-                                            colorBuckets
-                                        )
-                                    ],
-                                    fillOpacity: 0.4,
-                                    stroke: false
-                                };
-                            }
-                        }).addTo(map);
-                        currentLayers.push(l);
-
-                        /* Add region line */
-                        var l = L.geoJson(md.geo, {
-                            style: function (f) {
-                                return {
-                                    fill: false,
-                                    clickable: false,
-                                };
-                            }
-                        }).addTo(map);
-                        currentLayers.push(l);
-
-                        legendLayer = L.control({position: 'bottomright'});
-                        legendLayer.onAdd = function(map) {
-                            var div = L.DomUtil.create('div', 'legend');
-                            for (var i = colorBuckets.length - 1; i > 0; --i) {
-                                var text = colorBuckets[i - 1] + ' - ' + colorBuckets[i];
-
-                                div.innerHTML +=
-                                    '<i class="swatch" ' +
-                                        'style="background: ' +
-                                        GRID_COLORS[i - 1] +
-                                        ';"></i>' + text + '<br/>';
-                            }
-
-                            return div;
-                        };
-                        legendLayer.addTo(map);
+                        crimeGeoJson.push({
+                            type: 'Feature',
+                            properties: {
+                                crimeCount: gd.grid[x][y],
+                            },
+                            geometry: {
+                                type: 'Polygon',
+                                coordinates: [[
+                                    [gd.origin.coordinates[0] + x * gd.grid_size, gd.origin.coordinates[1] + y * gd.grid_size],
+                                    [gd.origin.coordinates[0] + (x + 1) * gd.grid_size, gd.origin.coordinates[1] + y * gd.grid_size],
+                                    [gd.origin.coordinates[0] + (x + 1) * gd.grid_size, gd.origin.coordinates[1] + (y + 1) * gd.grid_size],
+                                    [gd.origin.coordinates[0] + x * gd.grid_size, gd.origin.coordinates[1] + (y + 1) * gd.grid_size],
+                                ]],
+                            },
+                        })
                     }
-                );
+                }
+
+                // Compute percentiles for coloring
+                var colorBuckets = vizUtil.computePercentiles(
+                    crimeCounts, GRID_PERCENTILES);
+
+                // Render the crime grid
+                var l = L.geoJson(crimeGeoJson, {
+                    style: function (f) {
+                        return {
+                            color: GRID_COLORS[
+                                vizUtil.bucketForValue(
+                                    f.properties.crimeCount,
+                                    colorBuckets
+                                )
+                            ],
+                            fillOpacity: 0.4,
+                            stroke: false
+                        };
+                    }
+                }).addTo(map);
+                currentLayers.push(l);
+
+                // Render the legend
+                legendLayer = L.control({position: 'bottomright'});
+                legendLayer.onAdd = function(map) {
+                    var div = L.DomUtil.create('div', 'legend');
+                    for (var i = colorBuckets.length - 1; i > 0; --i) {
+                        var text = colorBuckets[i - 1] + ' - ' + colorBuckets[i];
+
+                        div.innerHTML +=
+                            '<i class="swatch" ' +
+                                'style="background: ' +
+                                GRID_COLORS[i - 1] +
+                                ';"></i>' + text + '<br/>';
+                    }
+
+                    return div;
+                };
+                legendLayer.addTo(map);
             });
         };
 
