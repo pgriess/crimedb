@@ -56,16 +56,16 @@ region = shapely.geometry.Polygon(
 
 # Compute our bounding box, snapped to GRID_SIZE
 lon_min, lat_min, lon_max, lat_max = region.bounds
-logging.info('Bounding box is ({}, {}), ({}, {})'.format(
-    lon_min, lat_min, lon_max, lat_max))
 lon_min -= lon_min % GRID_SIZE
 lat_min -= lat_min % GRID_SIZE
 lon_max += GRID_SIZE - (lon_max % GRID_SIZE)
 lat_max += GRID_SIZE - (lat_max % GRID_SIZE)
+logging.info('Bounding box is ({}, {}), ({}, {})'.format(
+    lon_min, lat_min, lon_max, lat_max))
 
 # Compute grid dimensions
 grid_width = int(round((lon_max - lon_min) / GRID_SIZE))
-grid_height =int(round((lat_max - lat_min) / GRID_SIZE))
+grid_height = int(round((lat_max - lat_min) / GRID_SIZE))
 logging.info('Rendering into {} x {} grid'.format(grid_width, grid_height))
 
 # Create an empty grid, populated with initial values of 0 for cells that are
@@ -75,10 +75,10 @@ for x in range(0, grid_width):
     col = []
     for y in range(0, grid_height):
         cell = shapely.geometry.box(
-                lon_min + x * GRID_SIZE,
-                lat_min + y * GRID_SIZE,
-                lon_min + (x + 1) * GRID_SIZE,
-                lat_min + (y + 1) * GRID_SIZE)
+            round(lon_min + x * GRID_SIZE, 3),
+            round(lat_min + y * GRID_SIZE, 3),
+            round(lon_min + (x + 1) * GRID_SIZE, 3),
+            round(lat_min + (y + 1) * GRID_SIZE, 3))
         v = 0 if cell.intersects(region) else -1
         col += [v]
     grid.append(col)
