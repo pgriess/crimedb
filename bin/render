@@ -101,7 +101,13 @@ for c in crimes_obj['crimes']:
     assert x >= 0 and x < grid_width
     assert y >= 0 and y < grid_height
 
-    assert grid[x][y] >= 0
+    # TODO: This should never happen based on our region clipping when
+    #       importing crimes, and based on our cell model above. Figure out
+    #       what the disconnect is, but for now just skip.
+    if grid[x][y] < 0:
+        logging.error('cell ({}, {}) contains crime; is outside region'.format(x, y))
+        continue
+
     grid[x][y] += 1
 
 # Render the JSON output file
