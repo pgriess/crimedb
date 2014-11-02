@@ -17,10 +17,12 @@
 # Process raw CrimeDB data files and render optimized data for www.
 
 import argparse
+import datetime
 import json
 import logging
 import math
 import os.path
+import pytz
 import shapely.geometry
 import sys
 
@@ -34,6 +36,19 @@ import crimedb.core
 # Grid size in lat/lon degrees
 GRID_SIZE = 0.002
 
+UTC_TZ = pytz.timezone('UTC')
+
+def crimedb_filenames_for_date_range(begin, end):
+    filenames = set()
+
+    current_date = begin
+    while current_date < end:
+        filenames.add(current_date.strftime('%Y-%m.json'))
+        current_date += datetime.timedelta(days=1)
+
+    return filenames
+
+
 ap = argparse.ArgumentParser(
         description='''
 Download crime data from original sources and transform it into CrimeDB JSON
@@ -44,9 +59,31 @@ files.
             crimedb.cli.config_argument_parser])
 ap.add_argument('data_dir', metavar='<data-dir>',
                 help=('read CrimeDB JSON raw data files from this directory'))
+ap.add_argument('--time-from', type=int, default=None, metavar='<secs>',
+                help='''
+Render crimes occurring after this time in epoch seconds UTC (default: one
+month ago)
+''')
+ap.add_argument('--time-to', type=int, default=None, metavar='<secs>',
+                help='''
+Render crimes occurring before this time in epoch seconds UTC (default: now)
+''')
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
 crimedb.cli.process_config_args(args, defaults={})
+
+if args.time_to is None:
+    args.time_to = UTC_TZ.localize(datetime.datetime.utcnow())
+else:
+    args.time_to = UTC_TZ.localize(
+            datetime.datetime.utcfromtimestamp(args.time_to))
+
+if args.time_from is None:
+    args.time_from = UTC_TZ.localize(
+            datetime.datetime.utcnow() - datetime.timedelta(30))
+else:
+    args.time_from = UTC_TZ.localize(
+            datetime.datetime.utcfromtimestamp(args.time_from))
 
 with open(os.path.join(args.data_dir, 'index.json'), 'rt') as mf:
     meta_obj = json.load(mf)
@@ -83,11 +120,23 @@ for x in range(0, grid_width):
         col += [v]
     grid.append(col)
 
-# Read crime data and populate the grid with aggregates
-with open(os.path.join(args.data_dir, meta_obj['files'][-1]), 'rt') as cf:
-    crimes_obj = json.load(cf)
+# Read crime data from date range
+crimes = []
+for fn in crimedb_filenames_for_date_range(args.time_from, args.time_to):
+    fp = os.path.join(args.data_dir, fn)
+    if not os.path.isfile(fp):
+        continue
 
-for c in crimes_obj['crimes']:
+    def crime_filter(c):
+        ct = datetime.datetime.strptime(
+                c['time'], crimedb.core.RFC3999_STRFTIME_FORMAT)
+        return ct >= args.time_from and ct <= args.time_to
+
+    with open(fp, 'rt') as cf:
+        crimes += [c for c in json.load(cf)['crimes'] if crime_filter(c)]
+
+# Populate the grid with aggregates
+for c in crimes:
     # Some crimes could not be geocoded; skip them
     if 'geo' not in c:
         continue
