@@ -11,6 +11,13 @@ $CRIMEDB_ROOT/bin/crawl -vvvv \
     --config=$HOME/.crimedb/crawl_config
 printf "[%s] Finished crawl\n" "$(date)"
 
+printf "[%s] Beginning render\n" "$(date)"
+for rn in $(ls -1 $CRIMEDB_ROOT/data) ; do
+    $CRIMEDB_ROOT/bin/render -vvvv \
+        $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/grid.json
+done
+printf "[%s] Finished render\n" "$(date)"
+
 printf "[%s] Beginning push\n" "$(date)"
 $CRIMEDB_ROOT/bin/push s3://www.crimedb.org s3://data.crimedb.org
 printf "[%s] Finished push\n" "$(date)"
