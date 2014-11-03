@@ -101,13 +101,24 @@ define(
                     jquery('.legend').remove();
                 }
 
+                // Figure out the range of grid squares that are being rendered
+                // by this map view
+                var x_min = Math.floor((currentBounds.getWest() - gd.origin.coordinates[0]) / gd.grid_size);
+                var x_max = Math.ceil((currentBounds.getEast() - gd.origin.coordinates[0]) / gd.grid_size);
+                var y_min = Math.floor((currentBounds.getSouth() - gd.origin.coordinates[1]) / gd.grid_size);
+                var y_max = Math.ceil((currentBounds.getNorth() - gd.origin.coordinates[1]) / gd.grid_size);
+
                 // Run over our grid and aggregate some data for each of our
                 // cells: an array of counts for use in computing percentiles,
                 // and the GeoJSON objects for rendering
                 var crimeCounts = Array();
                 var crimeGeoJson = Array();
-                for (var x = 0; x < gd.grid.length; ++x) {
-                    for (var y = 0; y < gd.grid[x].length; ++y) {
+                for (var x = Math.max(0, x_min);
+                     x < Math.min(gd.grid.length, x_max);
+                     ++x) {
+                    for (var y = Math.max(0, y_min);
+                         y < Math.min(gd.grid[x].length, y_max);
+                         ++y) {
                         if (gd.grid[x][y] < 0) {
                             continue;
                         }
