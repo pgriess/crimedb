@@ -17,8 +17,6 @@
 define(
     ['jquery', 'jquery-ui', 'leaflet', 'viz-util'],
     function(jquery, jqueryUi, L, vizUtil) {
-        var GRID_SIZE = 0.002;
-
         // http://www.colorbrewer2.org/
         var GRID_COLORS = [
             '#3288BD',
