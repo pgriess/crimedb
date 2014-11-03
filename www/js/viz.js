@@ -88,8 +88,7 @@ define(
                 var jsonFilename = md['files'][md.files.length - 1];
                 var year = jsonFilename.split('-')[0];
                 var month = new Number(jsonFilename.split('.')[0].split('-')[1]);
-                $('#from-label').text(
-                    'from ' + MONTHS[month.valueOf() - 1] + ' ' + year);
+                $('#from-label').text('from all of ' + year);
 
                 // Clear current layers
                 currentLayers.forEach(function(l) {
