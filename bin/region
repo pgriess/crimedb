@@ -320,4 +320,7 @@ view_parser.add_argument(
 view_parser.set_defaults(func=view_cmd)
 
 args = ap.parse_args()
+if 'func' not in args:
+    ap.error('command name required')
+
 args.func(args)
