@@ -168,28 +168,42 @@ def create_cmd(args):
     assert len(relations) == 1
     relation = next(iter(relations.values()))
 
+    # Append ways together to build the relation for this region
+    #
+    # This is complicated by the fact that relations may not list their ways in
+    # contiguous order. To handle this, iterate over the set of un-used WIDs
+    # for the relation and look for the first way that appends/prepends cleanly
+    # to the current region. Consider that used by removing it from the work
+    # list and start over. If none of the remaining ways are adjacent to the
+    # currently-computed relation, we have a problem.
     relation_nodes = []
-    for wid in relation.wids:
-        way_nodes = [nodes[nid] for nid in ways[wid].nids]
+    while relation.wids:
+        for wid in relation.wids:
+            way_nodes = [nodes[nid] for nid in ways[wid].nids]
 
-        # No path yet; accept first way as-is
-        if not relation_nodes:
-            relation_nodes += way_nodes
-            continue
+            # No path yet; accept first way as-is
+            if not relation_nodes:
+                relation_nodes += way_nodes
+                break
 
-        # Detect if the way needs to have its order reversed
-        # so that it cleanly appends/prepends to the path so far
-        if way_nodes[-1] == relation_nodes[-1] or \
-                way_nodes[0] == relation_nodes[0]:
-            way_nodes.reverse()
+            # Detect if the way needs to have its order reversed
+            # so that it cleanly appends/prepends to the path so far
+            if way_nodes[-1] == relation_nodes[-1] or \
+                    way_nodes[0] == relation_nodes[0]:
+                way_nodes.reverse()
 
-        # At this point, the way should either be a clean prepend
-        # or append; do it
-        if way_nodes[0] == relation_nodes[-1]:
-            relation_nodes += way_nodes[1:]
+            # At this point, the way should either be a clean prepend
+            # or append; do it
+            if way_nodes[0] == relation_nodes[-1]:
+                relation_nodes += way_nodes[1:]
+                break
+            elif way_nodes[-1] == relation_nodes[0]:
+                relation_nodes = way_nodes[:-1] + relation_nodes
+                break
         else:
-            assert way_nodes[-1] == relation_nodes[0]
-            relation_nodes = way_nodes[:-1] + relation_nodes
+            raise Exception('Failed to find next WID')
+
+        relation.wids.remove(wid)
 
     region = {
         'geo': {
