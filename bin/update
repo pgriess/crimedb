@@ -17,6 +17,10 @@ for rn in $(ls -1 $CRIMEDB_ROOT/data) ; do
         --time-from=$(date --date='January 1 2014' +'%s') \
         --time-to=$(date --date='January 1 2015' +'%s') \
         $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/grid.json
+    $CRIMEDB_ROOT/bin/render -vvvv timeseries \
+        --time-from=$(date --date='January 1 2014' +'%s') \
+        --time-to=$(date --date='January 1 2015' +'%s') \
+        $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/timeseries.json
 done
 printf "[%s] Finished render\n" "$(date)"
 

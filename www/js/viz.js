@@ -15,7 +15,7 @@
  */
 
 define(
-    ['jquery', 'jquery-ui', 'leaflet', 'viz-util'],
+    ['jquery', 'jquery-ui', 'leaflet', 'viz-util', 'highcharts'],
     function(jquery, jqueryUi, L, vizUtil) {
         // http://www.colorbrewer2.org/
         var GRID_COLORS = [
@@ -183,6 +183,13 @@ define(
             });
         };
 
+        var updateTimeseries = function(dataset) {
+            jquery.getJSON('//www.crimedb.org/d/' + dataset + '/timeseries.json',
+                function(td) {
+                    jquery('#timeseries-by-month').highcharts(td.by_month);
+                });
+        };
+
         var setupViz = function(dataset, initLoc) {
             jquery(document).ready(function() {
                 var map = L.map('map');
@@ -217,6 +224,8 @@ define(
                 });
                 map.addLayer(new L.StamenTileLayer('toner-lite'))
                     .setView(initLoc, 14);
+
+                updateTimeseries(dataset);
             });
         };
 

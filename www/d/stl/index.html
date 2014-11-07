@@ -44,6 +44,13 @@
                 clear: both;
             }
 
+            #timeseries {
+                height: 50%;
+                width: 40%;
+                border: 2px solid grey;
+                clear: both;
+            }
+
             .legend {
                 background: white;
                 opacity: 1.0;
@@ -72,6 +79,7 @@
             </div>
             <div id="map"></div>
         </div>
+
         <h3 id="help">Help</h3>
         <p>
         This map shows crime frequency in St. Louis City <span id="from-label"></span>.
@@ -82,6 +90,9 @@
         reported to have occurred there. The legend in the bottom right of the
         map can be used to interpret these colors.
         </p>
+
+        <div id="timeseries-by-month"></div>
+
         <h3 id="about">About</h3>
         <p>
         Data on crimes from the <a href="http://www.slmpd.org/">St. Louis
