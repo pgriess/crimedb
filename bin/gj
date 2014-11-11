@@ -30,80 +30,13 @@ import tempfile
 sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
 import crimedb.cli
+import crimedb.debug
 
 def view_cmd(args):
     with open(args.gj_path, 'rt', encoding='utf-8') as gjf:
         gjo = json.load(gjf)
 
-    html_content = '''
-<html>
-    <head>
-        <title>{{tags.name}}</title>
-
-        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
-        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
-
-        <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
-        <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
-        <script src="http://maps.stamen.com/js/tile.stamen.js?v1.3.0"></script>
-
-        <style type="text/css">
-            #map {
-                height: 90%;
-            }
-        </style>
-
-        <script type="text/javascript">
-            var POLYGON = {
-                type: 'Polygon',
-                coordinates: [[
-                    {{#coordinates}}
-                        [{{lon}}, {{lat}}],
-                    {{/coordinates}}
-                ]],
-            };
-
-            $(function() {
-                var map = L.map('map');
-
-                map.addLayer(new L.StamenTileLayer('toner'));
-                map.addLayer(
-                    L.geoJson(POLYGON, {
-                        style: { color: 'blue' },
-                    })
-                );
-                map.setView([{{center.lat}}, {{center.lon}}], {{zoom}});
-            });
-        </script>
-    </head>
-
-    <body>
-        <div id="map"/>
-    </body>
-</html>
-    '''
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        view_path = os.path.join(temp_dir, 'view.html')
-        shape = shapely.geometry.shape(gjo)
-        centroid = shape.centroid
-
-        context = {
-            'coordinates':
-                [{'lon': c[0], 'lat': c[1]} for c in gjo['coordinates'][0]],
-            'center': {'lon': centroid.x, 'lat': centroid.y},
-            'zoom': 10,
-        }
-        with open(view_path, 'wt', encoding='utf-8') as f:
-            f.write(pystache.render(html_content, context))
-
-        rc = subprocess.call(['open', view_path])
-        if rc:
-            logging.error('view failed with exit code {}'.format(rc))
-            sys.exit(rc)
-
-        input('Press <enter> to exit application\n')
+    crimedb.debug.view_geojson_objects(gjo)
 
 
 ap = argparse.ArgumentParser(
