@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# View portions of an OSM file.
+# Work with CrimeDB region files.
 
 import argparse
 import collections
@@ -35,187 +35,20 @@ import tempfile
 sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
 import crimedb.cli
-
-class OSMParserCallbacks:
-    Node = collections.namedtuple('Node', ['id', 'lon', 'lat', 'tags'])
-    Way = collections.namedtuple('Way', ['id', 'nids', 'tags'])
-    Relation = collections.namedtuple('Relation', ['id', 'wids', 'tags'])
-
-    def __init__(self, nids=set(), wids=set(), rids=set()):
-        self.nodes = {}
-        self.ways = {}
-        self.relations = {}
-
-        self.__nids = nids
-        self.__wids = wids
-        self.__rids = rids
-        self._tag_stack = []
-        self._id_stack = []
-
-    def start(self, tag, attrib):
-        tid = int(attrib.get('id', -1))
-
-        if tag == 'node':
-            self._id_stack.append(tid)
-            if tid in self.__nids:
-                self.nodes[tid] = OSMParserCallbacks.Node(
-                        id=tid,
-                        lon=float(attrib['lon']),
-                        lat=float(attrib['lat']),
-                        tags={})
-        elif tag == 'way':
-            self._id_stack.append(tid)
-            if tid in self.__wids:
-                self.ways[tid] = OSMParserCallbacks.Way(
-                        id=tid, nids=[], tags={})
-        elif tag == 'relation':
-            self._id_stack.append(tid)
-            if tid in self.__rids:
-                self.relations[tid] = OSMParserCallbacks.Relation(
-                        id=tid, wids=[], tags={})
-        elif tag == 'nd' and \
-                self._tag_stack[-1] == 'way' and \
-                self._id_stack[-1] in self.__wids:
-            self.ways[self._id_stack[-1]].nids.append(
-                    int(attrib['ref']))
-        elif tag == 'member' and \
-                attrib['type'] == 'way' and \
-                self._tag_stack[-1] == 'relation' and \
-                self._id_stack[-1] in self.__rids:
-            self.relations[self._id_stack[-1]].wids.append(
-                    int(attrib['ref']))
-        elif tag == 'tag':
-            last_tag = self._tag_stack[-1]
-            last_id = self._id_stack[-1]
-            if last_tag == 'node' and last_id in self.__nids:
-                self.nodes[last_id].tags[attrib['k']] = attrib['v']
-            elif last_tag == 'way' and last_id in self.__wids:
-                self.ways[last_id].tags[attrib['k']] = attrib['v']
-            elif last_tag == 'relation' and last_id in self.__rids:
-                self.relations[last_id].tags[attrib['k']] = attrib['v']
-
-        self._tag_stack.append(tag)
-
-    def end(self, tag):
-        self._tag_stack.pop()
-
-        if tag in set(['node', 'way', 'relation']):
-            self._id_stack.pop()
-
-    def data(self, data):
-        pass
-
-    def comment(self, text):
-        pass
-
-    def close(self):
-        pass
-
+import crimedb.debug
 
 def create_cmd(args):
     crimedb.cli.process_logging_args(args)
 
-    # Grab rids from CLI arguments and look up relations
-    rids = set([args.relation])
-    logging.debug('looking for rids={}'.format(pprint.pformat(rids)))
-    opc = OSMParserCallbacks(rids=rids)
-    with open(args.path, 'rb') as osm_f:
-        with contextlib.closing(
-                lxml.etree.XMLParser(target=opc)) as xp:
-            while True:
-                d = osm_f.read(1024)
-                if not d:
-                    break
-                xp.feed(d)
-    relations = opc.relations
-    logging.info('matched {} relations'.format(len(relations)))
-
-    # Grab wids from the relation and look up ways
-    wids = set()
-    for r in opc.relations.values():
-        wids |= set(r.wids)
-    logging.debug('looking for wids={}'.format(pprint.pformat(wids)))
-    opc = OSMParserCallbacks(wids=wids)
-    with open(args.path, 'rb') as osm_f:
-        with contextlib.closing(
-                lxml.etree.XMLParser(target=opc)) as xp:
-            while True:
-                d = osm_f.read(1024)
-                if not d:
-                    break
-                xp.feed(d)
-    ways = opc.ways
-    logging.info('matched {} ways'.format(len(ways)))
-
-    # Grab nids from the ways and look up nodes
-    nids = set()
-    for w in opc.ways.values():
-        nids |= set(w.nids)
-    logging.debug('looking for nids={}'.format(pprint.pformat(nids)))
-    opc = OSMParserCallbacks(nids=nids)
-    with open(args.path, 'rb') as osm_f:
-        with contextlib.closing(
-                lxml.etree.XMLParser(target=opc)) as xp:
-            while True:
-                d = osm_f.read(1024)
-                if not d:
-                    break
-                xp.feed(d)
-    nodes = opc.nodes
-    logging.info('matched {} nodes'.format(len(nodes)))
-
-    # We only support serializing a single relation right now
-    assert len(relations) == 1
-    relation = next(iter(relations.values()))
-
-    # Append ways together to build the relation for this region
-    #
-    # This is complicated by the fact that relations may not list their ways in
-    # contiguous order. To handle this, iterate over the set of un-used WIDs
-    # for the relation and look for the first way that appends/prepends cleanly
-    # to the current region. Consider that used by removing it from the work
-    # list and start over. If none of the remaining ways are adjacent to the
-    # currently-computed relation, we have a problem.
-    relation_nodes = []
-    while relation.wids:
-        for wid in relation.wids:
-            way_nodes = [nodes[nid] for nid in ways[wid].nids]
-
-            # No path yet; accept first way as-is
-            if not relation_nodes:
-                relation_nodes += way_nodes
-                break
-
-            # Detect if the way needs to have its order reversed
-            # so that it cleanly appends/prepends to the path so far
-            if way_nodes[-1] == relation_nodes[-1] or \
-                    way_nodes[0] == relation_nodes[0]:
-                way_nodes.reverse()
-
-            # At this point, the way should either be a clean prepend
-            # or append; do it
-            if way_nodes[0] == relation_nodes[-1]:
-                relation_nodes += way_nodes[1:]
-                break
-            elif way_nodes[-1] == relation_nodes[0]:
-                relation_nodes = way_nodes[:-1] + relation_nodes
-                break
-        else:
-            raise Exception('Failed to find next WID')
-
-        relation.wids.remove(wid)
+    with open(args.path, 'rt', encoding='utf-8') as f:
+        gjo = json.load(f)
 
     region = {
-        'geo': {
-            'type': 'Polygon',
-            'coordinates': [
-                [(n.lon, n.lat) for n in relation_nodes],
-            ],
-        },
+        'geo': gjo,
     }
 
-    if 'name' in relation.tags:
-        region['name'] = relation.tags['name']
+    if 'osm' in gjo and 'name' in gjo['osm']:
+        region['name'] = gjo['osm']['name']
 
     sys.stdout.write(
             json.dumps(
@@ -232,76 +65,8 @@ def view_cmd(args):
     with open(args.path, 'rt', encoding='utf-8') as f:
         ro = json.load(f)
 
-    html_content = '''
-<html>
-    <head>
-        <title>{{tags.name}}</title>
 
-        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
-        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
-
-        <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
-        <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
-        <script src="http://maps.stamen.com/js/tile.stamen.js?v1.3.0"></script>
-
-        <style type="text/css">
-            #map {
-                height: 90%;
-            }
-        </style>
-
-        <script type="text/javascript">
-            var POLYGON = {
-                type: 'Polygon',
-                coordinates: [[
-                    {{#coordinates}}
-                        [{{lon}}, {{lat}}],
-                    {{/coordinates}}
-                ]],
-            };
-
-            $(function() {
-                var map = L.map('map');
-
-                map.addLayer(new L.StamenTileLayer('toner'));
-                map.addLayer(
-                    L.geoJson(POLYGON, {
-                        style: { color: 'blue' },
-                    })
-                );
-                map.setView([{{center.lat}}, {{center.lon}}], {{zoom}});
-            });
-        </script>
-    </head>
-
-    <body>
-        <div id="map"/>
-    </body>
-</html>
-'''
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        view_path = os.path.join(temp_dir, 'view.html')
-        shape = shapely.geometry.Polygon(shell=[
-                tuple(c) for c in ro['geo']['coordinates'][0]])
-        centroid = shape.centroid
-
-        context = {
-            'coordinates':
-                [{'lon': c[0], 'lat': c[1]} for c in ro['geo']['coordinates'][0]],
-            'center': {'lon': centroid.x, 'lat': centroid.y},
-            'zoom': 10,
-        }
-        with open(view_path, 'wt', encoding='utf-8') as f:
-            f.write(pystache.render(html_content, context))
-
-        rc = subprocess.call(['open', view_path])
-        if rc:
-            logging.error('view failed with exit code {}'.format(rc))
-            sys.exit(rc)
-
-        input('Press <enter> to exit application\n')
+    crimedb.debug.view_geojson_objects(ro['geo'])
 
 
 ap = argparse.ArgumentParser(
@@ -318,11 +83,7 @@ written to stdout.
 ''')
 create_parser.add_argument(
         'path', metavar='<path>',
-        help='path to the OSM XML file to use as a source for our region')
-create_parser.add_argument(
-        'relation', metavar='<id>', type=int,
-        help=('identifier for the OSM relation from which to create our '
-              'region'))
+        help='path to the GeoJSON file to use as a source for our region')
 create_parser.set_defaults(func=create_cmd)
 
 view_parser = sp.add_parser(
