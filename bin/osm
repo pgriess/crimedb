@@ -1,0 +1,74 @@
+#!/bin/env python3.3
+#
+# Copyright 2014 Peter Griess
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Work with OSM XML dumps.
+
+import argparse
+import json
+import logging
+import os.path
+import pprint
+import shapely.geometry
+import sys
+
+# Add src/ directory to PYTHONPATH so that this can be run without the operator
+# having to configure that manually
+sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
+
+import crimedb.cli
+import crimedb.debug
+import crimedb.osm
+
+ap = argparse.ArgumentParser(
+        description='Work with OSM XML dumps.',
+        parents=[crimedb.cli.logging_argument_parser])
+ap.add_argument('osm_path', metavar='<file>', help='OSM file to parse')
+ap.add_argument('ids', nargs='+', metavar='<id>', type=int,
+                help='entities to extract')
+
+args = ap.parse_args()
+crimedb.cli.process_logging_args(args)
+
+# Grab rids from CLI arguments and look up relations
+logging.debug('looking for rids={}'.format(args.ids))
+with open(args.osm_path, 'rb') as osm_f:
+    relations, ways, nodes = crimedb.osm.parse_osm_file(
+            osm_f, rids=set(args.ids))
+logging.info('matched {} relations'.format(len(relations)))
+
+entities = relations
+entities.update(ways)
+entities.update(nodes)
+
+# Walk through all of the OSM entities that we found and render them to GeoJSON
+for osm_id in args.ids:
+    so = entities.get(osm_id)
+    if so is None:
+        logging.error('could not find osm id {}'.format(osm_id))
+        continue
+
+    gjo = shapely.geometry.mapping(so)
+    gjo['osm'] = {
+        'id': osm_id
+    }
+
+    with open('{}.json'.format(osm_id), 'wt', encoding='utf-8') as gjf:
+        json.dump(
+            gjo,
+            gjf,
+            ensure_ascii=False,
+            indent=4,
+            sort_keys=True)
