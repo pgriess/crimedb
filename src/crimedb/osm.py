@@ -155,19 +155,24 @@ def parse_osm_file(f, rids=set(), wids=set(), nids=set()):
     # Now that we have the OSM nodes for each of the objects that we care about,
     # convert them into shapely.geometry objects
     def osm_node_to_shapely(n):
-        so = shapely.geometry.Point(n.lon, n.lat)
-        return (n.id, so)
+        val = {'osm': n.tags}
+        val['shape'] = shapely.geometry.Point(n.lon, n.lat)
+        return (n.id, val)
     nodes = dict(map(osm_node_to_shapely, nodes.values()))
 
     def osm_way_to_shapely(w):
-        so = shapely.geometry.LineString(
-                [(nodes[nid].x, nodes[nid].y) for nid in w.nids])
-        return (w.id, so)
+        val = {'osm': w.tags}
+        val['shape'] = shapely.geometry.LineString(
+                [(nodes[nid]['shape'].x, nodes[nid]['shape'].y)
+                    for nid in w.nids])
+        return (w.id, val)
     ways = dict(map(osm_way_to_shapely, ways.values()))
 
     def osm_relation_to_shapely(r):
+        val = {'osm': r.tags}
+
         polys, dangles, cuts, invalids = shapely.ops.polygonize_full(
-            [ways[wid] for wid in r.wids])
+            [ways[wid]['shape'] for wid in r.wids])
 
         if len(polys) != 1 or len(dangles) != 0 or \
            len(cuts) != 0 or len(invalids) != 0:
@@ -176,7 +181,8 @@ def parse_osm_file(f, rids=set(), wids=set(), nids=set()):
                 r.id, len(polys), len(dangles), len(cuts), len(invalids)))
             return (r.id, None)
 
-        return (r.id, polys[0])
+        val['shape'] = polys[0]
+        return (r.id, val)
     relations = dict(map(osm_relation_to_shapely, relations.values()))
 
     # Finally, filter out any entities other than those that were requested

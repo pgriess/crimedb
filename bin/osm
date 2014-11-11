@@ -55,15 +55,14 @@ entities.update(nodes)
 
 # Walk through all of the OSM entities that we found and render them to GeoJSON
 for osm_id in args.ids:
-    so = entities.get(osm_id)
-    if so is None:
+    oo = entities.get(osm_id)
+    if oo is None:
         logging.error('could not find osm id {}'.format(osm_id))
         continue
 
-    gjo = shapely.geometry.mapping(so)
-    gjo['osm'] = {
-        'id': osm_id
-    }
+    gjo = shapely.geometry.mapping(oo['shape'])
+    gjo['osm'] = oo['osm']
+    gjo['osm']['id'] = osm_id
 
     with open('{}.json'.format(osm_id), 'wt', encoding='utf-8') as gjf:
         json.dump(
