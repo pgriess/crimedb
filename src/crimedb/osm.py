@@ -18,7 +18,7 @@ Utilities for working with OSM XML dumps.
 
 import collections
 import contextlib
-import functools
+from functools import partial
 import logging
 import lxml.etree
 import shapely.geometry
@@ -183,11 +183,8 @@ def parse_osm_file(f, rids=set(), wids=set(), nids=set()):
     def is_needed(ids, item):
         k, v = item
         return k in ids
-    relations = dict(
-            filter(functools.partial(is_needed, rids), relations.items()))
-    ways = dict(
-            filter(functools.partial(is_needed, wids), ways.items()))
-    nodes = dict(
-            filter(functools.partial(is_needed, nids), nodes.items()))
+    relations = dict(filter(partial(is_needed, rids), relations.items()))
+    ways = dict(filter(partial(is_needed, wids), ways.items()))
+    nodes = dict(filter(partial(is_needed, nids), nodes.items()))
 
     return relations, ways, nodes
