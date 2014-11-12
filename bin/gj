@@ -17,7 +17,9 @@
 # Work with GeoJSON files.
 
 import argparse
+import functools
 import json
+import logging
 import os.path
 import pystache
 import shapely.geometry
@@ -39,6 +41,36 @@ def view_cmd(args):
     crimedb.debug.view_geojson_objects(gjo)
 
 
+def transform_cmd(args):
+    def diff_transform(path, so):
+        with open(path, 'rt', encoding='utf-8') as f:
+            diff_so = shapely.geometry.shape(json.load(f))
+
+        return so.difference(diff_so)
+
+    with open(args.gj_path, 'rt', encoding='utf-8') as gjf:
+        so = shapely.geometry.shape(json.load(gjf))
+
+    i = 0
+    transformations = []
+    while i < len(args.commands):
+        if args.commands[i] == '-diff':
+            i += 1
+            transformations += [functools.partial(diff_transform, args.commands[i])]
+        else:
+            raise Exception('unknown command: {}'.format(args.commands[i]))
+
+        i += 1
+
+    so = functools.reduce(lambda gjo, f: f(gjo), transformations, so)
+    json.dump(
+            shapely.geometry.mapping(so),
+            sys.stdout,
+            ensure_ascii=False,
+            indent=4,
+            sort_keys=True)
+
+
 ap = argparse.ArgumentParser(
         description='Work with CrimeDB region files.',
         parents=[crimedb.cli.logging_argument_parser])
@@ -52,6 +84,29 @@ view_parser.add_argument(
         'gj_path', metavar='<file>',
         help='path to the GeoJSON file to view')
 view_parser.set_defaults(func=view_cmd)
+
+transform_parser = sp.add_parser(
+    'transform',
+    help='transform GeoJSON objects',
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description='''
+Transform GeoJSON objects. Transformations are applied in the order specified.
+Due to the way argparse handles arguments, you will have to provide a '--'
+positional argument immediately after the <path> argument in order to get the
+behavior desired.
+
+Possible transformations and their arguments are:
+
+  -diff <path>          Subtract the GeoJSON object from the given path from the
+                        current object
+''')
+transform_parser.add_argument(
+    'gj_path', metavar='<path>',
+    help='path to base GeoJSON file')
+transform_parser.add_argument(
+    'commands', nargs='*',
+    help='set of transformations to apply')
+transform_parser.set_defaults(func=transform_cmd)
 
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
