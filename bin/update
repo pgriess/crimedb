@@ -13,13 +13,15 @@ printf "[%s] Finished crawl\n" "$(date)"
 
 printf "[%s] Beginning render\n" "$(date)"
 for rn in $(ls -1 $CRIMEDB_ROOT/data) ; do
-    $CRIMEDB_ROOT/bin/render -vvvv grid \
+    $CRIMEDB_ROOT/bin/render -vvvv \
         --time-from=$(date --date='January 1 2014' +'%s') \
         --time-to=$(date --date='January 1 2015' +'%s') \
+        grid \
         $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/grid.json
-    $CRIMEDB_ROOT/bin/render -vvvv timeseries \
+    $CRIMEDB_ROOT/bin/render -vvvv \
         --time-from=$(date --date='January 1 2014' +'%s') \
         --time-to=$(date --date='January 1 2015' +'%s') \
+        timeseries \
         $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/timeseries.json
 done
 printf "[%s] Finished render\n" "$(date)"
