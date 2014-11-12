@@ -114,8 +114,7 @@ for region_name in args.region_names:
 
     region_kwargs = kwargs.copy()
 
-    region = shapely.geometry.Polygon(
-        shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
+    region = shapely.geometry.shape(meta_obj['geo'])
     region_kwargs['region'] = region
 
     if args.mapquest_api_key:
