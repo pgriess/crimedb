@@ -76,9 +76,9 @@ sp = ap.add_subparsers()
 
 create_parser = sp.add_parser(
         'create',
-        help='create a new region file from an OSM XML dump',
+        help='create a new region file from a GeoJSON file',
         description='''
-Create a new region file from an OSM XML dump. The resulting region file is
+Create a new region file from a GeoJSON file. The resulting region file is
 written to stdout.
 ''')
 create_parser.add_argument(
