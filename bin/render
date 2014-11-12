@@ -54,8 +54,7 @@ def cmd_grid(args):
     with open(os.path.join(args.data_dir, 'index.json'), 'rt') as mf:
         meta_obj = json.load(mf)
 
-    region = shapely.geometry.Polygon(
-        shell=[tuple(c) for c in meta_obj['geo']['coordinates'][0]])
+    region = shapely.geometry.shape(meta_obj['geo'])
 
     # Compute our bounding box, snapped to GRID_SIZE
     lon_min, lat_min, lon_max, lat_max = region.bounds
