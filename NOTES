@@ -132,3 +132,8 @@ o Mac OS X
         java version "1.7.0_51"
         Java(TM) SE Runtime Environment (build 1.7.0_51-b13)
         Java HotSpot(TM) 64-Bit Server VM (build 24.51-b03, mixed mode)
+
+This seemst to be the best source for Geo data. All good shapes from the OSM
+dataset are really from a 2008 dump of this data:
+
+    - http://www.census.gov/geo/maps-data/data/tiger.html
