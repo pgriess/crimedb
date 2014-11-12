@@ -43,11 +43,9 @@ args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
 
 # Grab rids from CLI arguments and look up relations
-logging.debug('looking for rids={}'.format(args.ids))
 with open(args.osm_path, 'rb') as osm_f:
     relations, ways, nodes = crimedb.osm.parse_osm_file(
             osm_f, rids=set(args.ids))
-logging.info('matched {} relations'.format(len(relations)))
 
 entities = relations
 entities.update(ways)
