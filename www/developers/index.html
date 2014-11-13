@@ -55,8 +55,14 @@
         </p>
 
         <p>
+            A list of all datasets available can be found by issuing a GET
+            requset to <tt>http://data.crimedb.org/</tt>. This will return a
+            JSON object describing the list of all valid datasets (regions).
+        </p>
+
+        <p>
             Individual datasets are hosted in subdirectories. For example,
-            <tt>http://data.crimedb.org/stl/</a></tt>
+            <tt>http://data.crimedb.org/stl/</tt>
             hosts the dataset for St. Louis City, MO. Issuing a GET request
             for this path will return metadata about this specific dataset
             in JSON format.

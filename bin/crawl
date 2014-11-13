@@ -151,3 +151,8 @@ for region_name in args.region_names:
 
     with open(os.path.join(data_dir, 'index.json'), 'wt') as mf:
         json.dump(meta_obj, mf)
+
+# Write a JSON file to the root of the data directory listing the set of datasets
+# available
+with open(os.path.join(args.data_dir, 'index.json'), 'wt') as mf:
+    json.dump({'regions': list(args.region_names)}, mf)
