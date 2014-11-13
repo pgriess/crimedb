@@ -109,6 +109,8 @@ for region_name in args.region_names:
     work_dir = os.path.join(args.work_dir, region_name)
     data_dir = os.path.join(args.data_dir, region_name)
 
+    logging.info('crawling region {}'.format(region_name))
+
     with open(os.path.join(data_dir, 'index.json'), 'rt') as mf:
         meta_obj = json.load(mf)
 
