@@ -22,10 +22,8 @@ import contextlib
 import json
 import logging
 import lxml.etree
-import pystache
 import os.path
 import pprint
-import shapely.geometry
 import subprocess
 import sys
 import tempfile
