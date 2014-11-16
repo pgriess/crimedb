@@ -60,21 +60,12 @@ define(
         var legendLayer = null;
         var currentBounds = null;
 
-        var getGridData = function(dataset, cb) {
-            jquery.getJSON('//www.crimedb.org/d/' + dataset + '/grid.json', cb);
+        var getGridData = function(cb) {
+            jquery.getJSON('grid.json', cb);
         };
 
-        /* TODO: Filter returned regions by map's viewable area */
-        var getMetaData = function(dataset, cb) {
-            getGridData(dataset, function(gd) {
-                jquery.getJSON('//data.crimedb.org/' + dataset + '/', function(md) {
-                    cb(md, gd);
-                });
-            });
-        };
-
-        var updateMap = function(dataset, map) {
-            getMetaData(dataset, function(md, gd) {
+        var updateMap = function(map) {
+            getGridData(function(gd) {
                 var bounds = map.getBounds();
 
                 // Map hasn't changed; nothing to do
@@ -83,12 +74,6 @@ define(
                 }
 
                 currentBounds = bounds;
-
-                // Update the description text
-                var jsonFilename = md['files'][md.files.length - 1];
-                var year = jsonFilename.split('-')[0];
-                var month = new Number(jsonFilename.split('.')[0].split('-')[1]);
-                $('#from-label').text('from all of ' + year);
 
                 // Clear current layers
                 currentLayers.forEach(function(l) {
@@ -183,22 +168,22 @@ define(
             });
         };
 
-        var updateTimeseries = function(dataset) {
-            jquery.getJSON('//www.crimedb.org/d/' + dataset + '/timeseries.json',
+        var updateTimeseries = function() {
+            jquery.getJSON('timeseries.json',
                 function(td) {
                     jquery('#timeseries-by-month').highcharts(td.by_month);
                 });
         };
 
-        var setupViz = function(dataset, initLoc) {
+        var setupViz = function(initLoc) {
             jquery(document).ready(function() {
                 var map = L.map('map');
 
-                map.on('load', function() { updateMap(dataset, map); })
-                    .on('viewreset', function() { updateMap(dataset, map); })
-                    .on('zoomend', function() { updateMap(dataset, map); })
-                    .on('moveend', function() { updateMap(dataset, map); })
-                    .on('resize', function() { updateMap(dataset, map); });
+                map.on('load', function() { updateMap(map); })
+                    .on('viewreset', function() { updateMap(map); })
+                    .on('zoomend', function() { updateMap(map); })
+                    .on('moveend', function() { updateMap(map); })
+                    .on('resize', function() { updateMap(map); });
 
                 /*
                  * Add tile layer for Stamen Toner.
@@ -225,7 +210,7 @@ define(
                 map.addLayer(new L.StamenTileLayer('toner-lite'))
                     .setView(initLoc, 14);
 
-                updateTimeseries(dataset);
+                updateTimeseries();
             });
         };
 

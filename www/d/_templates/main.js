@@ -21,8 +21,7 @@ requirejs.config({
 requirejs(
     ['viz'],
     function(viz) {
-        var CITY_HALL = [38.627047, -90.199192];
-
-        viz.setupViz('stl', CITY_HALL);
+        var CENTER = [{{center_lat}}, {{center_lon}}];
+        viz.setupViz(CENTER);
     }
 );

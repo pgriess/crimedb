@@ -15,10 +15,10 @@
  limitations under the License.
 -->
     <head>
-        <title>CrimeDB - St. Louis</title>
+        <title>CrimeDB - {{name}}</title>
 
         <link rel="stylesheet" href="../../css/leaflet.css" />
-        <script type="text/javascript" data-main="stl.js" src="/js/require.js"></script>
+        <script type="text/javascript" data-main="main.js" src="/js/require.js"></script>
 
         <script>
           (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -82,7 +82,7 @@
 
         <h3 id="help">Help</h3>
         <p>
-        This map shows crime frequency in St. Louis City <span id="from-label"></span>.
+        This map shows crime frequency in {{name}} {{timeslice}}.
         </p>
 
         <p>
@@ -95,9 +95,8 @@
 
         <h3 id="about">About</h3>
         <p>
-        Data on crimes from the <a href="http://www.slmpd.org/">St. Louis
-        Metropolitan Police Department</a>, and retrieved using the <a
-        href="/">CrimeDB</a> API.
+        Data on crimes from the <a href="{{source}}">{{name}}
+        Police Department</a>, and retrieved using the <a href="/">CrimeDB</a> API.
         </p>
 
         <p>

@@ -22,7 +22,9 @@ import datetime
 import json
 import logging
 import math
+import os
 import os.path
+import pystache
 import pytz
 import shapely.geometry
 import sys
@@ -230,6 +232,42 @@ def cmd_timeseries(args):
     json.dump(jo, sys.stdout)
 
 
+def cmd_html(args):
+    # Create our pystache context object
+    region_path = os.path.join(args.data_dir, 'index.json')
+    with open(region_path, 'rt', encoding='utf-8') as rf:
+        ro = json.load(rf, encoding='utf-8')
+
+    rs = shapely.geometry.shape(ro['geo'])
+
+    context = {
+        'name': ro['name'],
+        'timeslice': 'from {} to {}'.format(
+                args.time_from.strftime('%B %d, %Y'),
+                args.time_to.strftime('%B %d, %Y')),
+        'source': ro['source'],
+        'center_lon': rs.centroid.x,
+        'center_lat': rs.centroid.y,
+    }
+
+    # Walk the template directory rendering any template files to the
+    # destination
+    for root, dirs, files in os.walk(args.template_dir):
+        for fn in files:
+            if fn.startswith('.'):
+                continue
+
+            sp = os.path.join(root, fn)
+            logging.debug('loading template {}'.format(sp))
+            with open(sp, 'rt', encoding='utf-8') as sf:
+                source_data = sf.read()
+
+            rp = os.path.relpath(sp, args.template_dir)
+            dp = os.path.join(args.output_dir, rp)
+            with open(dp, 'wt', encoding='utf-8') as df:
+                df.write(pystache.render(source_data, context))
+
+
 ap = argparse.ArgumentParser(
         description='''
 Download crime data from original sources and transform it into CrimeDB JSON
@@ -261,6 +299,18 @@ ts_parser.add_argument(
     'data_dir', metavar='<data-dir>',
     help=('read CrimeDB JSON raw data files from this directory'))
 ts_parser.set_defaults(func=cmd_timeseries)
+
+html_parser = sp.add_parser('templates', help='render templates')
+html_parser.add_argument(
+    'data_dir', metavar='<data-dir>',
+    help=('read CrimeDB JSON raw data files from this directory'))
+html_parser.add_argument(
+    'template_dir', metavar='<template-dir>',
+    help=('read templates from this directory'))
+html_parser.add_argument(
+    'output_dir', metavar='<out-dir>',
+    help=('write expanded templates to this directory'))
+html_parser.set_defaults(func=cmd_html)
 
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
