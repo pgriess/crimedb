@@ -21,7 +21,6 @@ import functools
 import json
 import logging
 import os.path
-import pystache
 import shapely.geometry
 import subprocess
 import sys
