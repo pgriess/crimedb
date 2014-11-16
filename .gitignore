@@ -1,5 +1,4 @@
 .DS_Store
-solr/*/data/*
 *.swp
 *.pyc
 data/
