@@ -232,7 +232,7 @@ def cmd_timeseries(args):
     json.dump(jo, sys.stdout)
 
 
-def cmd_html(args):
+def cmd_templates(args):
     # Create our pystache context object
     region_path = os.path.join(args.data_dir, 'index.json')
     with open(region_path, 'rt', encoding='utf-8') as rf:
@@ -264,6 +264,9 @@ def cmd_html(args):
 
             rp = os.path.relpath(sp, args.template_dir)
             dp = os.path.join(args.output_dir, rp)
+            if not os.path.isdir(os.path.dirname(dp)):
+                os.makedirs(os.path.dirname(dp))
+
             with open(dp, 'wt', encoding='utf-8') as df:
                 df.write(pystache.render(source_data, context))
 
@@ -310,7 +313,7 @@ html_parser.add_argument(
 html_parser.add_argument(
     'output_dir', metavar='<out-dir>',
     help=('write expanded templates to this directory'))
-html_parser.set_defaults(func=cmd_html)
+html_parser.set_defaults(func=cmd_templates)
 
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
