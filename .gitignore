@@ -3,4 +3,4 @@
 *.pyc
 data/
 work/
-www/d/*/*.json
+www/d/**
