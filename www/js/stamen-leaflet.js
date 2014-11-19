@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /*
- * A LeafletJS for Stamen map tiles as an AMD module.
+ * A LeafletJS plugin for Stamen map tiles as an AMD module.
  */
 
 define(
