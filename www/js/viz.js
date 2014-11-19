@@ -15,9 +15,8 @@
  */
 
 define(
-    ['jquery', 'jquery-ui', 'leaflet', 'highcharts',
-     'crimedb-leaflet', 'stamen-leaflet'],
-    function(jquery, jqueryUi, L, highcharts, crimedb, _) {
+    ['jquery', 'leaflet', 'highcharts', 'crimedb-leaflet', 'stamen-leaflet'],
+    function(jquery, L, highcharts, crimedb, _) {
         var MONTHS = [
             'January',
             'February',
