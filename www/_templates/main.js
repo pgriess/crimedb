@@ -22,6 +22,6 @@ requirejs(
     ['viz'],
     function(viz) {
         var CENTER = [{{center_lat}}, {{center_lon}}];
-        viz.setupViz(CENTER);
+        viz.setupViz('{{region}}', CENTER);
     }
 );

@@ -241,6 +241,7 @@ def cmd_templates(args):
     rs = shapely.geometry.shape(ro['geo'])
 
     context = {
+        'region': os.path.basename(args.data_dir),
         'name': ro['name'],
         'timeslice': 'from {} to {}'.format(
                 args.time_from.strftime('%B %d, %Y'),
