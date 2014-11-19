@@ -15,8 +15,9 @@
  */
 
 define(
-    ['jquery', 'jquery-ui', 'leaflet', 'highcharts', 'crimedb-leaflet'],
-    function(jquery, jqueryUi, L, highcharts, crimedb) {
+    ['jquery', 'jquery-ui', 'leaflet', 'highcharts',
+     'crimedb-leaflet', 'stamen-leaflet'],
+    function(jquery, jqueryUi, L, highcharts, crimedb, _) {
         var MONTHS = [
             'January',
             'February',
@@ -43,28 +44,6 @@ define(
             jquery(document).ready(function() {
                 var map = L.map('map');
 
-                /*
-                 * Add tile layer for Stamen Toner.
-                 *
-                 * Copied from http://maps.stamen.com/js/tile.stamen.js?v1.2.3
-                 * as it could not be used directly due use of RequireJS
-                 * (tile.stamen.js assumes that the 'L' global is available).
-                 */
-                L.StamenTileLayer = L.TileLayer.extend({
-                    initialize: function(name) {
-                        L.TileLayer.prototype.initialize.call(
-                            this,
-                            'http://{s}tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
-                            {
-                                minZoom: 0,
-                                maxZoom: 20,
-                                subdomains: ['a.', 'b.', 'c.', 'd.'],
-                                scheme: 'xyz',
-                                attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>.',
-                            }
-                        );
-                    }
-                });
                 map.addLayer(new L.StamenTileLayer('toner-lite'))
                     .setView(initLoc, 14);
                 map.addLayer(new crimedb.CrimeDBLayer(region));
