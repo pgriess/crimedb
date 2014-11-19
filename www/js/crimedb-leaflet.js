@@ -18,7 +18,7 @@
 
 define(
     ['jquery', 'leaflet'],
-    function(jquery, leaflet) {
+    function($, L) {
         // Colors to use for our heatmap; from http://www.colorbrewer2.org/
         var GRID_COLORS = [
             '#3288BD',
@@ -77,7 +77,7 @@ define(
             throw 'Could not find bucket for value!';
         };
 
-        var CrimeDBLayer = leaflet.Class.extend({
+        var CrimeDBLayer = L.Class.extend({
             initialize: function(region) {
                 var self = this;
 
@@ -98,7 +98,7 @@ define(
                     .on('moveend', self.updateCallback)
                     .on('resize', self.updateCallback);
 
-                jquery.getJSON(
+                $.getJSON(
                     '//www.crimedb.org/d/' + this.region + '/grid.json',
                     function(gd) {
                         self.crimeDBData = gd;
@@ -146,7 +146,7 @@ define(
                     map.removeLayer(l);
                 });
                 self.currentLayers = [];
-                jquery('.legend').remove();
+                $('.legend').remove();
 
                 // Figure out the range of grid squares that are being rendered
                 // by this map view
