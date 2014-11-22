@@ -24,6 +24,8 @@ import lxml.etree
 import shapely.geometry
 import shapely.ops
 
+__LOGGER = logging.getLogger(__name__)
+
 
 class OSMParserCallbacks:
     Node = collections.namedtuple('Node', ['id', 'lon', 'lat', 'tags'])
@@ -130,27 +132,27 @@ def parse_osm_file(f, rids=set(), wids=set(), nids=set()):
     pos = f.tell()
 
     # Look up relations
-    logging.debug('looking for rids={}'.format(rids))
+    __LOGGER.debug('looking for rids={}'.format(rids))
     relations = parse_osm_file_raw(f, rids=rids)[0]
-    logging.info('matched {} relations'.format(len(relations)))
+    __LOGGER.info('matched {} relations'.format(len(relations)))
 
     # Grab wids from the relation and look up ways
     wids_needed = set(wids)
     for r in relations.values():
         wids_needed |= set(r.wids)
-    logging.debug('looking for wids={}'.format(wids_needed))
+    __LOGGER.debug('looking for wids={}'.format(wids_needed))
     f.seek(pos)
     ways = parse_osm_file_raw(f, wids=wids_needed)[1]
-    logging.info('matched {} ways'.format(len(ways)))
+    __LOGGER.info('matched {} ways'.format(len(ways)))
 
     # Grab nids from the ways and look up nodes
     nids_needed = set(nids)
     for w in ways.values():
         nids_needed |= set(w.nids)
-    logging.debug('looking for nids={}'.format(nids_needed))
+    __LOGGER.debug('looking for nids={}'.format(nids_needed))
     f.seek(pos)
     nodes = parse_osm_file_raw(f, nids=nids_needed)[2]
-    logging.info('matched {} nodes'.format(len(nodes)))
+    __LOGGER.info('matched {} nodes'.format(len(nodes)))
 
     # Now that we have the OSM nodes for each of the objects that we care about,
     # convert them into shapely.geometry objects
@@ -176,7 +178,7 @@ def parse_osm_file(f, rids=set(), wids=set(), nids=set()):
 
         if len(polys) != 1 or len(dangles) != 0 or \
            len(cuts) != 0 or len(invalids) != 0:
-            logging.debug(('failed to create polygon from relation {}: '
+            __LOGGER.debug(('failed to create polygon from relation {}: '
                            'polys={}, dangles={}, cuts={}, invalids={}').format(
                 r.id, len(polys), len(dangles), len(cuts), len(invalids)))
             return (r.id, None)
