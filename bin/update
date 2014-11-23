@@ -12,6 +12,13 @@ $CRIMEDB_ROOT/bin/crawl -vvvv \
 printf "[%s] Finished crawl\n" "$(date)"
 
 printf "[%s] Beginning render\n" "$(date)"
+rm -fr $CRIMEDB_ROOT/www/grid-data
+mkdir $CRIMEDB_ROOT/www/grid-data
+$CRIMEDB_ROOT/bin/render -vvvv \
+    --time-from=$(date --date='January 1 2014' +'%s') \
+    --time-to=$(date --date='January 1 2015' +'%s') \
+    grid2 \
+    $CRIMEDB_ROOT/data $CRIMEDB_ROOT/www/grid-data
 for rn in $(find $CRIMEDB_ROOT/data -mindepth 1 -maxdepth 1 -type d -exec basename {} \;) ; do
     $CRIMEDB_ROOT/bin/render -vvvv \
         --time-from=$(date --date='January 1 2014' +'%s') \

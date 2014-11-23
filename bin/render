@@ -35,11 +35,15 @@ sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
 import crimedb.cli
 import crimedb.core
+import crimedb.www
 
 # Grid size in lat/lon degrees
 GRID_SIZE = 0.002
 
 UTC_TZ = pytz.timezone('UTC')
+
+MAX_ZOOM_LEVEL = 12
+GRID_CELL_ZOOM_DEPTH = 3
 
 def crimedb_filenames_for_date_range(begin, end):
     filenames = set()
@@ -137,6 +141,67 @@ def cmd_grid(args):
     }
 
     json.dump(jo, sys.stdout)
+
+
+def grid_for_region(args, region_dir, zoom):
+    # Read crime data from date range
+    crimes = []
+    for fn in crimedb_filenames_for_date_range(args.time_from, args.time_to):
+        fp = os.path.join(region_dir, fn)
+        if not os.path.isfile(fp):
+            continue
+
+        def crime_filter(c):
+            # Some crimes do not have a location (e.g. because they could not
+            # be geocoded)
+            if 'geo' not in c:
+                return False
+
+            # Crimes must be within the expected time range
+            ct = datetime.datetime.strptime(
+                    c['time'], crimedb.core.RFC3999_STRFTIME_FORMAT)
+            if ct < args.time_from or ct > args.time_to:
+                return False
+
+            return True
+
+        with open(fp, 'rt') as cf:
+            crimes += [c for c in json.load(cf)['crimes'] if crime_filter(c)]
+
+    grid = crimedb.www.grid_from_crimes(crimes, zoom)
+
+    # XXX: Need to inject 0s for cells that are within our region but have no
+    #      crimes. Without this, the sparse cells will not be set and will thus
+    #      be interpreted as out-of-region rather than real 0s.
+
+    return grid
+
+
+def cmd_grid2(args):
+    initial_zoom_level = MAX_ZOOM_LEVEL + GRID_CELL_ZOOM_DEPTH
+    grid = crimedb.www.grid_from_crimes([], initial_zoom_level)
+    for rn in os.listdir(args.data_dir):
+        rp = os.path.join(args.data_dir, rn)
+        if not os.path.isdir(rp):
+            continue
+
+        logging.info('Reading raw data for {}'.format(rn))
+        grid = crimedb.www.grid_add(
+                grid,
+                grid_for_region(args, rp, initial_zoom_level))
+
+    zgrid = crimedb.www.zgrid_from_grid(grid, initial_zoom_level, 0)
+    rzgrid = crimedb.www.rzgrid_from_zgrid(zgrid, GRID_CELL_ZOOM_DEPTH)
+
+    for z, xgrids in rzgrid.items():
+        for x, ygrids in xgrids.items():
+            for y, grid in ygrids.items():
+                dp = os.path.join(args.output_dir, str(z), str(x))
+                if not os.path.isdir(dp):
+                    os.makedirs(dp)
+                gjo = crimedb.www.rzgrid_to_geojson(rzgrid, x, y, z, GRID_CELL_ZOOM_DEPTH)
+                with open(os.path.join(dp, '{}.json'.format(y)), 'wt', encoding='utf-8') as of:
+                    json.dump(gjo, of)
 
 
 def cmd_timeseries(args):
@@ -297,6 +362,20 @@ grid_parser.add_argument(
     'data_dir', metavar='<data-dir>',
     help=('read CrimeDB JSON raw data files from this directory'))
 grid_parser.set_defaults(func=cmd_grid)
+
+grid2_parser = sp.add_parser('grid2', help='render JSON data grid file')
+grid2_parser.add_argument(
+    'data_dir', metavar='<data-dir>',
+    help=('''
+read CrimeDB JSON raw data files from this directory; should contain a
+subdirectory for each region
+'''))
+grid2_parser.add_argument(
+    'output_dir', metavar='<output-dir>',
+    help='''
+Write grid tiles to the given directory.
+''')
+grid2_parser.set_defaults(func=cmd_grid2)
 
 ts_parser = sp.add_parser('timeseries', help='render JSON timeseries file')
 ts_parser.add_argument(
