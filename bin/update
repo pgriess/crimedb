@@ -4,40 +4,81 @@
 
 CRIMEDB_ROOT=$(dirname $0)/..
 
-printf "[%s] Beginning crawl\n" "$(date)"
-$CRIMEDB_ROOT/bin/crawl -vvvv \
-    --data-dir=$CRIMEDB_ROOT/data \
-    --work-dir=$CRIMEDB_ROOT/work \
-    --config=$HOME/.crimedb/crawl_config
-printf "[%s] Finished crawl\n" "$(date)"
+optCrawl=
+optPush=
+optRender=
 
-printf "[%s] Beginning render\n" "$(date)"
-rm -fr $CRIMEDB_ROOT/www/grid-data
-mkdir $CRIMEDB_ROOT/www/grid-data
-$CRIMEDB_ROOT/bin/render -vvvv \
-    --time-from=$(date --date='January 1 2014' +'%s') \
-    --time-to=$(date --date='January 1 2015' +'%s') \
-    grid2 \
-    $CRIMEDB_ROOT/data $CRIMEDB_ROOT/www/grid-data
-for rn in $(find $CRIMEDB_ROOT/data -mindepth 1 -maxdepth 1 -type d -exec basename {} \;) ; do
-    $CRIMEDB_ROOT/bin/render -vvvv \
-        --time-from=$(date --date='January 1 2014' +'%s') \
-        --time-to=$(date --date='January 1 2015' +'%s') \
-        templates \
-        $CRIMEDB_ROOT/data/$rn $CRIMEDB_ROOT/www/_templates $CRIMEDB_ROOT/www/d/$rn
-    $CRIMEDB_ROOT/bin/render -vvvv \
-        --time-from=$(date --date='January 1 2014' +'%s') \
-        --time-to=$(date --date='January 1 2015' +'%s') \
-        grid \
-        $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/grid.json
-    $CRIMEDB_ROOT/bin/render -vvvv \
-        --time-from=$(date --date='January 1 2014' +'%s') \
-        --time-to=$(date --date='January 1 2015' +'%s') \
-        timeseries \
-        $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/timeseries.json
+usage() {
+    cat >&2 <<EOF
+usage: $EXEC [options]
+
+Update CrimeDB, running whatever phases are requested. By default, nothing is
+done.
+
+Options:
+  -c                crawl
+  -h                show help
+  -p                push
+  -r                render
+EOF
+}
+
+while getopts 'chpr' OPTNAME ; do
+    case $OPTNAME in
+        c)
+            optCrawl=1
+            ;;
+
+        h)
+            usage
+            exit 0
+            ;;
+
+        p)
+            optPush=1
+            ;;
+
+        r)
+            optRender=1
+            ;;
+    esac
 done
-printf "[%s] Finished render\n" "$(date)"
 
-printf "[%s] Beginning push\n" "$(date)"
-$CRIMEDB_ROOT/bin/push s3://www.crimedb.org s3://data.crimedb.org
-printf "[%s] Finished push\n" "$(date)"
+if [[ -n "$optCrawl" ]] ; then
+    printf "[%s] Beginning crawl\n" "$(date)"
+    $CRIMEDB_ROOT/bin/crawl -vvvv \
+        --data-dir=$CRIMEDB_ROOT/data \
+        --work-dir=$CRIMEDB_ROOT/work \
+        --config=$HOME/.crimedb/crawl_config
+    printf "[%s] Finished crawl\n" "$(date)"
+fi
+
+if [[ -n "$optRender" ]] ; then
+    printf "[%s] Beginning render\n" "$(date)"
+    rm -fr $CRIMEDB_ROOT/www/grid-data
+    mkdir $CRIMEDB_ROOT/www/grid-data
+    $CRIMEDB_ROOT/bin/render -vvvv \
+        --time-from=$(date --date='January 1 2014' +'%s') \
+        --time-to=$(date --date='January 1 2015' +'%s') \
+        grid2 \
+        $CRIMEDB_ROOT/data $CRIMEDB_ROOT/www/grid-data
+    for rn in $(find $CRIMEDB_ROOT/data -mindepth 1 -maxdepth 1 -type d -exec basename {} \;) ; do
+        $CRIMEDB_ROOT/bin/render -vvvv \
+            --time-from=$(date --date='January 1 2014' +'%s') \
+            --time-to=$(date --date='January 1 2015' +'%s') \
+            templates \
+            $CRIMEDB_ROOT/data/$rn $CRIMEDB_ROOT/www/_templates $CRIMEDB_ROOT/www/d/$rn
+        $CRIMEDB_ROOT/bin/render -vvvv \
+            --time-from=$(date --date='January 1 2014' +'%s') \
+            --time-to=$(date --date='January 1 2015' +'%s') \
+            timeseries \
+            $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/timeseries.json
+    done
+    printf "[%s] Finished render\n" "$(date)"
+fi
+
+if [[ -n "$optPush" ]] ; then
+    printf "[%s] Beginning push\n" "$(date)"
+    $CRIMEDB_ROOT/bin/push s3://www.crimedb.org s3://data.crimedb.org
+    printf "[%s] Finished push\n" "$(date)"
+fi
