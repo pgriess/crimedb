@@ -42,7 +42,7 @@ GRID_SIZE = 0.002
 
 UTC_TZ = pytz.timezone('UTC')
 
-MAX_ZOOM_LEVEL = 12
+MAX_ZOOM_LEVEL = 14
 GRID_CELL_ZOOM_DEPTH = 3
 
 def crimedb_filenames_for_date_range(begin, end):
