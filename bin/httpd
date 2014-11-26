@@ -17,13 +17,15 @@
 # Run the Apache webserver to front a local instance of CrimeDB.
 
 EXEC=$(basename $0)
-CRIMEDB_ROOT=$(readlink -f $(dirname $0)/..)
 APACHECTL=/opt/local/apache2/bin/apachectl
+CRIMEDB_ROOT=$(readlink -f $(dirname $0)/..)
+CRIMEDB_WWW_ROOT=${CRIMEDB_ROOT}/www
+CRIMEDB_DATA_ROOT=${CRIMEDB_ROOT}/data
 
-export CRIMEDB_WWW_ROOT=${CRIMEDB_ROOT}/www
-export CRIMEDB_DATA_ROOT=${CRIMEDB_ROOT}/data
-
-exec $APACHECTL \
+exec sudo env \
+    CRIMEDB_WWW_ROOT=$CRIMEDB_WWW_ROOT \
+    CRIMEDB_DATA_ROOT=$CRIMEDB_DATA_ROOT \
+    $APACHECTL \
     -f $CRIMEDB_ROOT/httpd/httpd.conf \
     -e debug \
     -k $1
