@@ -56,93 +56,6 @@ def crimedb_filenames_for_date_range(begin, end):
     return filenames
 
 
-def cmd_grid(args):
-    with open(os.path.join(args.data_dir, 'index.json'), 'rt') as mf:
-        meta_obj = json.load(mf)
-
-    region = shapely.geometry.shape(meta_obj['geo'])
-
-    # Compute our bounding box, snapped to GRID_SIZE
-    lon_min, lat_min, lon_max, lat_max = region.bounds
-    lon_min -= lon_min % GRID_SIZE
-    lat_min -= lat_min % GRID_SIZE
-    lon_max += GRID_SIZE - (lon_max % GRID_SIZE)
-    lat_max += GRID_SIZE - (lat_max % GRID_SIZE)
-    logging.info('Bounding box is ({}, {}), ({}, {})'.format(
-        lon_min, lat_min, lon_max, lat_max))
-
-    # Compute grid dimensions
-    grid_width = int(round((lon_max - lon_min) / GRID_SIZE))
-    grid_height = int(round((lat_max - lat_min) / GRID_SIZE))
-    logging.info('Rendering into {} x {} grid'.format(grid_width, grid_height))
-
-    # Create an empty grid, populated with initial values of 0 for cells that are
-    # in our region and -1 those that are not
-    grid = []
-    for x in range(0, grid_width):
-        col = []
-        for y in range(0, grid_height):
-            cell = shapely.geometry.box(
-                round(lon_min + x * GRID_SIZE, 3),
-                round(lat_min + y * GRID_SIZE, 3),
-                round(lon_min + (x + 1) * GRID_SIZE, 3),
-                round(lat_min + (y + 1) * GRID_SIZE, 3))
-            v = 0 if cell.intersects(region) else -1
-            col += [v]
-        grid.append(col)
-
-    # Read crime data from date range
-    crimes = []
-    for fn in crimedb_filenames_for_date_range(args.time_from, args.time_to):
-        fp = os.path.join(args.data_dir, fn)
-        if not os.path.isfile(fp):
-            continue
-
-        def crime_filter(c):
-            ct = datetime.datetime.strptime(
-                    c['time'], crimedb.core.RFC3999_STRFTIME_FORMAT)
-            return ct >= args.time_from and ct <= args.time_to
-
-        with open(fp, 'rt') as cf:
-            crimes += [c for c in json.load(cf)['crimes'] if crime_filter(c)]
-
-    # Populate the grid with aggregates
-    for c in crimes:
-        # Some crimes could not be geocoded; skip them
-        if 'geo' not in c:
-            continue
-
-        lon, lat = c['geo']['coordinates']
-        assert lon > lon_min and lon < lon_max
-        assert lat > lat_min and lat < lat_max
-
-        x = math.floor((lon - lon_min) / GRID_SIZE)
-        y = math.floor((lat - lat_min) / GRID_SIZE)
-        assert x >= 0 and x < grid_width
-        assert y >= 0 and y < grid_height
-
-        # TODO: This should never happen based on our region clipping when
-        #       importing crimes, and based on our cell model above. Figure out
-        #       what the disconnect is, but for now just skip.
-        if grid[x][y] < 0:
-            logging.error('cell ({}, {}) contains crime; is outside region'.format(x, y))
-            continue
-
-        grid[x][y] += 1
-
-    # Render the JSON output file
-    jo = {
-        'origin': {
-            'type': 'Point',
-            'coordinates': [lon_min, lat_min]
-        },
-        'grid_size': GRID_SIZE,
-        'grid': grid
-    }
-
-    json.dump(jo, sys.stdout)
-
-
 def grid_for_region(args, region_dir, zoom):
     # Read crime data from date range
     crimes = []
@@ -177,7 +90,7 @@ def grid_for_region(args, region_dir, zoom):
     return grid
 
 
-def cmd_grid2(args):
+def cmd_grid(args):
     initial_zoom_level = MAX_ZOOM_LEVEL + GRID_CELL_ZOOM_DEPTH
     grid = crimedb.www.grid_from_crimes([], initial_zoom_level)
     for rn in os.listdir(args.data_dir):
@@ -360,22 +273,16 @@ sp = ap.add_subparsers()
 grid_parser = sp.add_parser('grid', help='render JSON data grid file')
 grid_parser.add_argument(
     'data_dir', metavar='<data-dir>',
-    help=('read CrimeDB JSON raw data files from this directory'))
-grid_parser.set_defaults(func=cmd_grid)
-
-grid2_parser = sp.add_parser('grid2', help='render JSON data grid file')
-grid2_parser.add_argument(
-    'data_dir', metavar='<data-dir>',
     help=('''
 read CrimeDB JSON raw data files from this directory; should contain a
 subdirectory for each region
 '''))
-grid2_parser.add_argument(
+grid_parser.add_argument(
     'output_dir', metavar='<output-dir>',
     help='''
 Write grid tiles to the given directory.
 ''')
-grid2_parser.set_defaults(func=cmd_grid2)
+grid_parser.set_defaults(func=cmd_grid)
 
 ts_parser = sp.add_parser('timeseries', help='render JSON timeseries file')
 ts_parser.add_argument(
