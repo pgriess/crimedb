@@ -171,14 +171,6 @@ define(
             update: function(map) {
                 var self = this;
 
-                // If the map hasn't moved, there's nothing to do
-                var bounds = map.getBounds();
-                if (bounds.equals(self.currentBounds)) {
-                    return;
-                }
-
-                self.currentBounds = bounds;
-
                 // Kick off a fetch for each of the tiles that we need to render
                 // the current map.
                 tilesForMap(map).forEach(function(t) {
@@ -235,6 +227,14 @@ define(
 
             renderTileData: function(map) {
                 var self = this;
+
+                // If the map hasn't moved, there's nothing to do
+                var bounds = map.getBounds();
+                if (bounds.equals(self.currentBounds)) {
+                    return;
+                }
+
+                self.currentBounds = bounds;
 
                 // Clear out the current view, including the legend
                 self.currentLayers.forEach(function(l) {
