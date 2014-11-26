@@ -78,6 +78,53 @@ define(
             throw 'Could not find bucket for value!';
         };
 
+        /**
+         * Figure out the set of tiles needed to render the given LeafletJS map.
+         *
+         * Note: Code for lon2tile() and lat2tile() is from
+         *       http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+         */
+        var lon2tile = function(lon, zoom) {
+            return Math.floor((lon + 180.0) / 360.0 * Math.pow(2, zoom));
+        };
+        var lat2tile = function(lat, zoom) {
+            return Math.floor((1.0 - Math.log(Math.tan(lat * Math.PI / 180.0) + 1 / Math.cos(lat * Math.PI / 180.0)) / Math.PI) / 2.0 * Math.pow(2, zoom));
+        };
+        var tilesForMap = function(map) {
+            var bounds = map.getBounds();
+            var zoom = Math.min(14, map.getZoom());
+
+            var x_min = lon2tile(bounds.getWest(), zoom);
+            var x_max = lon2tile(bounds.getEast(), zoom);
+            var y_min = lat2tile(bounds.getNorth(), zoom);
+            var y_max = lat2tile(bounds.getSouth(), zoom);
+
+            if (x_min > x_max || y_min > y_max) {
+                throw 'Unexpected bounds!';
+            }
+
+            var tiles = [];
+            for (var x = x_min; x <= x_max; ++x) {
+                for (var y = y_min; y <= y_max; ++y) {
+                    tiles.push({
+                        z: zoom,
+                        x: x,
+                        y: y,
+                    });
+                }
+            }
+
+            return tiles;
+        };
+
+        /**
+         * Get the URL from which to fetch a grid tile.
+         */
+        var gridUrl = function(x, y, z) {
+            return '//www.crimedb.org/grid-data/' +
+                z + '/' + x + '/' + y + '.json';
+        };
+
         var CrimeDBLayer = L.Class.extend({
             initialize: function(region) {
                 var self = this;
@@ -85,7 +132,7 @@ define(
                 self.region = region;
                 self.currentLayers = [];
                 self.currentBounds = null;
-                self.crimeDBData = null;
+                self.crimeDBData = {};
                 self.updateCallback = null;
             },
 
@@ -99,13 +146,9 @@ define(
                     .on('moveend', self.updateCallback)
                     .on('resize', self.updateCallback);
 
-                $.getJSON(
-                    '//www.crimedb.org/d/' + this.region + '/grid.json',
-                    function(gd) {
-                        self.crimeDBData = gd;
-                        self.update(map);
-                    }
-                );
+                // Perform the initial udpate rather than waiting for the user
+                // to do something
+                self.updateCallback();
             },
 
             onRemove: function(map) {
@@ -136,11 +179,62 @@ define(
 
                 self.currentBounds = bounds;
 
-                // If there is no data to render, there is nothing to do
-                var gd = self.crimeDBData;
-                if (!gd) {
-                    return;
-                }
+                // Kick off a fetch for each of the tiles that we need to render
+                // the current map.
+                tilesForMap(map).forEach(function(t) {
+
+                    // If we have all of the tiles that we need to render the
+                    // grid, go ahead and do it. Note that this re-computes the
+                    // set of tiles needed because the map may have moved since
+                    // we initially performed the fetch.
+                    var maybeRenderGrid = function() {
+                        var haveAllData = tilesForMap(map).reduce(
+                            function(acc, t) {
+                                return acc && (gridUrl(t.x, t.y, t.z) in self.crimeDBData);
+                            },
+                            true
+                        );
+
+                        if (!haveAllData) {
+                            return;
+                        }
+
+                        self.renderTileData(map);
+                    };
+
+                    var url = gridUrl(t.x, t.y, t.z);
+                    if (url in self.crimeDBData) {
+                        maybeRenderGrid();
+                    } else {
+                        $.ajax(url, {
+                            success: function(gd) {
+                                self.crimeDBData[url] = gd;
+                            },
+
+                            statusCode: {
+                                // If we get a 404 from the server that just
+                                // means that there is no data for this tile.
+                                // Mark it as such and move on.
+                                404: function() {
+                                    self.crimeDBData[url] = null;
+                                },
+                            },
+
+                            // Regardless of success/failure we should attempt
+                            // to render things.
+                            complete: function() {
+                                maybeRenderGrid();
+                            },
+
+                            // TODO: Need failure handler to retry on timeouts
+                            //       and other soft errors.
+                        });
+                    }
+                });
+            },
+
+            renderTileData: function(map) {
+                var self = this;
 
                 // Clear out the current view, including the legend
                 self.currentLayers.forEach(function(l) {
@@ -149,47 +243,38 @@ define(
                 self.currentLayers = [];
                 $('.legend').remove();
 
-                // Figure out the range of grid squares that are being rendered
-                // by this map view
-                var x_min = Math.floor((bounds.getWest() - gd.origin.coordinates[0]) / gd.grid_size);
-                var x_max = Math.ceil((bounds.getEast() - gd.origin.coordinates[0]) / gd.grid_size);
-                var y_min = Math.floor((bounds.getSouth() - gd.origin.coordinates[1]) / gd.grid_size);
-                var y_max = Math.ceil((bounds.getNorth() - gd.origin.coordinates[1]) / gd.grid_size);
+                var gd = tilesForMap(map).reduce(
+                    function(acc, t) {
+                        var td = self.crimeDBData[gridUrl(t.x, t.y, t.z)];
 
-                // Run over our grid and aggregate some data for each of our
-                // cells: an array of counts for use in computing percentiles,
-                // and the GeoJSON objects for rendering
-                var crimeCounts = Array();
-                var crimeGeoJson = Array();
-                for (var x = Math.max(0, x_min);
-                     x < Math.min(gd.grid.length, x_max);
-                     ++x) {
-                    for (var y = Math.max(0, y_min);
-                         y < Math.min(gd.grid[x].length, y_max);
-                         ++y) {
-                        if (gd.grid[x][y] < 0) {
-                            continue;
+                        // Not all cells have data, e.g. if we got a 404 from
+                        // the server for this tile
+                        if (td) {
+                            acc = acc.concat(td);
                         }
 
-                        crimeCounts.push(gd.grid[x][y]);
+                        return acc;
+                    },
+                    []
+                );
 
-                        crimeGeoJson.push({
-                            type: 'Feature',
-                            properties: {
-                                crimeCount: gd.grid[x][y],
-                            },
-                            geometry: {
-                                type: 'Polygon',
-                                coordinates: [[
-                                    [gd.origin.coordinates[0] + x * gd.grid_size, gd.origin.coordinates[1] + y * gd.grid_size],
-                                    [gd.origin.coordinates[0] + (x + 1) * gd.grid_size, gd.origin.coordinates[1] + y * gd.grid_size],
-                                    [gd.origin.coordinates[0] + (x + 1) * gd.grid_size, gd.origin.coordinates[1] + (y + 1) * gd.grid_size],
-                                    [gd.origin.coordinates[0] + x * gd.grid_size, gd.origin.coordinates[1] + (y + 1) * gd.grid_size],
-                                ]],
-                            },
-                        })
-                    }
-                }
+                var crimeCounts = gd.map(function(gc) { return gc.crime_count; });
+                var crimeGeoJson = gd.map(function(gc) {
+                    var cnt = gc.crime_count;
+
+                    // The 'geometry' property will contain the 'crime_count'
+                    // value as well, which is kind of weird. It would be nice
+                    // for this to be strictly GeoJSON, but that requires
+                    // copying the gc object (which seems non-trivial in JS)
+                    // and then deleting the 'crime_count' field.
+                    return {
+                        type: 'Feature',
+                        properties: {
+                            crimeCount: cnt,
+                        },
+                        geometry: gc,
+                    };
+                });
 
                 // Compute percentiles for coloring
                 var colorBuckets = computePercentiles(
