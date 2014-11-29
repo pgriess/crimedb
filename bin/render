@@ -106,7 +106,6 @@ def grid_for_region(args, region_dir, zoom):
             cell_shape = crimedb.www.bbox_from_slippy_tile_coordinates(x, y, zoom)
             if region_shape.intersects(cell_shape) and \
                     y not in grid[x]:
-                logging.debug('Adding 0 to ({}, {})'.format(x, y))
                 grid[x][y] += 0
 
     return grid
