@@ -69,12 +69,12 @@ if [[ -n "$optRender" ]] ; then
             --time-from=$(date --date='January 1 2014' +'%s') \
             --time-to=$(date --date='January 1 2015' +'%s') \
             templates \
-            $CRIMEDB_ROOT/data/$rn $CRIMEDB_ROOT/www/_templates $CRIMEDB_ROOT/www/d/$rn
+            $CRIMEDB_ROOT/data/$rn $CRIMEDB_ROOT/www/_templates $CRIMEDB_ROOT/www/r/$rn
         $CRIMEDB_ROOT/bin/render -vvvv \
             --time-from=$(date --date='January 1 2014' +'%s') \
             --time-to=$(date --date='January 1 2015' +'%s') \
             timeseries \
-            $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/d/$rn/timeseries.json
+            $CRIMEDB_ROOT/data/$rn >$CRIMEDB_ROOT/www/r/$rn/timeseries.json
     done
     printf "[%s] Finished render\n" "$(date)"
 fi

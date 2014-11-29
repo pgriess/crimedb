@@ -3,5 +3,5 @@
 *.pyc
 data/
 work/
-www/d/**
+www/r/**
 www/grid-data/**
