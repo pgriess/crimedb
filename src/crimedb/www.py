@@ -53,6 +53,18 @@ def point_from_slippy_tile_coordinates(x, y, z):
     return lon_deg, lat_deg
 
 
+def bbox_from_slippy_tile_coordinates(x, y, z):
+    '''
+    Return a Shapely object for the bouding box surrounding the given Slippy
+    map tile.
+    '''
+
+    minx, miny = point_from_slippy_tile_coordinates(x, y, z)
+    maxx, maxy = point_from_slippy_tile_coordinates(x + 1, y + 1, z)
+
+    return shapely.geometry.box(minx, miny, maxx, maxy)
+
+
 def grid_from_crimes(crimes, zoom):
     '''
     Return a {x => {y => count}} dictionary grid for the given set of crimes at

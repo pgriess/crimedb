@@ -83,9 +83,31 @@ def grid_for_region(args, region_dir, zoom):
 
     grid = crimedb.www.grid_from_crimes(crimes, zoom)
 
-    # XXX: Need to inject 0s for cells that are within our region but have no
-    #      crimes. Without this, the sparse cells will not be set and will thus
-    #      be interpreted as out-of-region rather than real 0s.
+    # We need to inject 0s for cells that are within our region but have no
+    # crimes. Without this, the sparse cells will not be set and will thus be
+    # interpreted as out-of-region rather than real 0s.
+    with open(os.path.join(region_dir, 'index.json'), 'rt', encoding='utf-8') as mf:
+        region_shape = shapely.geometry.shape(json.load(mf)['geo'])
+
+    # Compute the range of (x, y) tile coordinates at our zoom level that are
+    # within the region.
+    #
+    # NOTE: Since the Slippy map coordinate system has its origin at (-180W, +85N)
+    #       the maximum latitude is our minimum Y value while the maximum longitude
+    #       is our maximum X value.
+    lon_min, lat_min, lon_max, lat_max = region_shape.bounds
+    minx, maxy = crimedb.www.slippy_tile_coordinates_from_point(
+            lon_min, lat_min, zoom)
+    maxx, miny = crimedb.www.slippy_tile_coordinates_from_point(
+            lon_max, lat_max, zoom)
+
+    for x in range(minx, maxx + 1):
+        for y in range(miny, maxy + 1):
+            cell_shape = crimedb.www.bbox_from_slippy_tile_coordinates(x, y, zoom)
+            if region_shape.intersects(cell_shape) and \
+                    y not in grid[x]:
+                logging.debug('Adding 0 to ({}, {})'.format(x, y))
+                grid[x][y] += 0
 
     return grid
 
