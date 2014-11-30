@@ -19,6 +19,7 @@
 import argparse
 from collections import defaultdict
 import datetime
+import functools
 import json
 import logging
 import math
@@ -27,6 +28,7 @@ import os.path
 import pystache
 import pytz
 import shapely.geometry
+import shutil
 import sys
 
 # Add src/ directory to PYTHONPATH so that this can be run without the operator
@@ -44,6 +46,24 @@ UTC_TZ = pytz.timezone('UTC')
 
 MAX_ZOOM_LEVEL = 14
 GRID_CELL_ZOOM_DEPTH = 3
+
+
+def call_per_region(region_dir, f):
+    '''
+    Run a function on every known region, calling it with a single argument:
+    the name of the region.
+    '''
+
+    for rn in os.listdir(region_dir):
+        if rn.startswith('.'):
+            continue
+
+        rp = os.path.join(region_dir, rn)
+        if not os.path.isdir(rp):
+            continue
+
+        f(region_name=rn, region_path=rp)
+
 
 def crimedb_filenames_for_date_range(begin, end):
     filenames = set()
@@ -111,7 +131,11 @@ def grid_for_region(args, region_dir, zoom):
     return grid
 
 
-def cmd_grid(args):
+def render_grid(args):
+    '''
+    Render JSON files for the data-grid/ output directory.
+    '''
+
     initial_zoom_level = MAX_ZOOM_LEVEL + GRID_CELL_ZOOM_DEPTH
     grid = crimedb.www.grid_from_crimes([], initial_zoom_level)
     for rn in os.listdir(args.data_dir):
@@ -130,7 +154,7 @@ def cmd_grid(args):
     for z, xgrids in rzgrid.items():
         for x, ygrids in xgrids.items():
             for y, grid in ygrids.items():
-                dp = os.path.join(args.output_dir, str(z), str(x))
+                dp = os.path.join(args.output_dir, 'grid-data', str(z), str(x))
                 if not os.path.isdir(dp):
                     os.makedirs(dp)
                 gjo = crimedb.www.rzgrid_to_geojson(rzgrid, x, y, z, GRID_CELL_ZOOM_DEPTH)
@@ -138,11 +162,16 @@ def cmd_grid(args):
                     json.dump(gjo, of)
 
 
-def cmd_timeseries(args):
+def render_timeseries(args, region_name, region_path, **kwargs):
+    '''
+    Render JSON files to be used for rendering a HighCharts timeseries in the
+    /r/<region>/index.html page and write it to /r/<region>/timeseries.json.
+    '''
+
     # Read crime data from date range
     crimes = []
     for fn in crimedb_filenames_for_date_range(args.time_from, args.time_to):
-        fp = os.path.join(args.data_dir, fn)
+        fp = os.path.join(region_path, fn)
         if not os.path.isfile(fp):
             continue
 
@@ -228,19 +257,27 @@ def cmd_timeseries(args):
         },
     }
 
-    json.dump(jo, sys.stdout)
+    dp = os.path.join(args.output_dir, 'r', region_name)
+    if not os.path.isdir(dp):
+        os.makedirs(dp)
+    with open(os.path.join(dp, 'timeseries.json'), 'wt', encoding='utf-8') as tf:
+        json.dump(jo, tf)
 
 
-def cmd_templates(args):
+def render_templates(args, region_name, region_path, **kwargs):
+    '''
+    Render files from the _templates/ directory
+    '''
+
     # Create our pystache context object
-    region_path = os.path.join(args.data_dir, 'index.json')
-    with open(region_path, 'rt', encoding='utf-8') as rf:
+    ip = os.path.join(region_path, 'index.json')
+    with open(ip, 'rt', encoding='utf-8') as rf:
         ro = json.load(rf, encoding='utf-8')
 
     rs = shapely.geometry.shape(ro['geo'])
 
     context = {
-        'region': os.path.basename(args.data_dir),
+        'region': region_name,
         'name': ro['name'],
         'timeslice': 'from {} to {}'.format(
                 args.time_from.strftime('%B %d, %Y'),
@@ -252,7 +289,8 @@ def cmd_templates(args):
 
     # Walk the template directory rendering any template files to the
     # destination
-    for root, dirs, files in os.walk(args.template_dir):
+    template_path = os.path.join(args.www_dir, '_templates')
+    for root, dirs, files in os.walk(template_path):
         for fn in files:
             if fn.startswith('.'):
                 continue
@@ -262,8 +300,8 @@ def cmd_templates(args):
             with open(sp, 'rt', encoding='utf-8') as sf:
                 source_data = sf.read()
 
-            rp = os.path.relpath(sp, args.template_dir)
-            dp = os.path.join(args.output_dir, rp)
+            rp = os.path.relpath(sp, template_path)
+            dp = os.path.join(args.output_dir, 'r', region_name, rp)
             if not os.path.isdir(os.path.dirname(dp)):
                 os.makedirs(os.path.dirname(dp))
 
@@ -289,39 +327,22 @@ ap.add_argument('--time-to', type=int, default=None, metavar='<secs>',
 Render crimes occurring before this time in epoch seconds UTC (default: now)
 ''')
 
-sp = ap.add_subparsers()
-
-grid_parser = sp.add_parser('grid', help='render JSON data grid file')
-grid_parser.add_argument(
+ap.add_argument(
     'data_dir', metavar='<data-dir>',
     help=('''
 read CrimeDB JSON raw data files from this directory; should contain a
 subdirectory for each region
 '''))
-grid_parser.add_argument(
+ap.add_argument(
+    'www_dir', metavar='<www-dir>',
+    help=('''
+read www files from this directory
+'''))
+ap.add_argument(
     'output_dir', metavar='<output-dir>',
-    help='''
-Write grid tiles to the given directory.
-''')
-grid_parser.set_defaults(func=cmd_grid)
-
-ts_parser = sp.add_parser('timeseries', help='render JSON timeseries file')
-ts_parser.add_argument(
-    'data_dir', metavar='<data-dir>',
-    help=('read CrimeDB JSON raw data files from this directory'))
-ts_parser.set_defaults(func=cmd_timeseries)
-
-html_parser = sp.add_parser('templates', help='render templates')
-html_parser.add_argument(
-    'data_dir', metavar='<data-dir>',
-    help=('read CrimeDB JSON raw data files from this directory'))
-html_parser.add_argument(
-    'template_dir', metavar='<template-dir>',
-    help=('read templates from this directory'))
-html_parser.add_argument(
-    'output_dir', metavar='<out-dir>',
-    help=('write expanded templates to this directory'))
-html_parser.set_defaults(func=cmd_templates)
+    help=('''
+write www files to this directory
+'''))
 
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
@@ -340,4 +361,14 @@ else:
     args.time_from = UTC_TZ.localize(
             datetime.datetime.utcfromtimestamp(args.time_from))
 
-args.func(args)
+# Clean out any old contents from the destination directory
+if os.path.exists(args.output_dir):
+    shutil.rmtree(args.output_dir)
+
+# Start by copying the www directory to the destination, ignoring any directories
+# that start with our special '_' prefix
+shutil.copytree(args.www_dir, args.output_dir, ignore=shutil.ignore_patterns('_*'))
+
+render_grid(args)
+call_per_region(args.data_dir, functools.partial(render_timeseries, args))
+call_per_region(args.data_dir, functools.partial(render_templates, args))
