@@ -51,6 +51,21 @@ define(
                 map.addLayer(new crimedb.CrimeDBLayer(region));
 
                 updateTimeseries();
+
+                // Add a path tracing the outline of the region
+                jquery.getJSON(
+                    '//data.crimedb.org/' + region + '/',
+                    function(rd) {
+                        var l = L.geoJson(rd.geo, {
+                            style: function(feature) {
+                                return {
+                                    fill: false,
+                                };
+                            }
+                        });
+                        map.addLayer(l);
+                    }
+                );
             });
         };
 
