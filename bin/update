@@ -47,7 +47,7 @@ done
 if [[ -n "$optCrawl" ]] ; then
     printf "[%s] Beginning crawl\n" "$(date)"
     $CRIMEDB_ROOT/bin/crawl -vvvv \
-        --data-dir=$CRIMEDB_ROOT/data \
+        --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
         --config=$HOME/.crimedb/crawl_config
     printf "[%s] Finished crawl\n" "$(date)"

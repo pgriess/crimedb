@@ -49,7 +49,7 @@ usage() {
     cat >&2 <<EOF
 usage: $EXEC [options] <www-dest> <data-dest>
 
-Puhes data from \$CRIMEDB_ROOT/www to <www-dest> and \$CRIMEDB_ROOT/data to
+Puhes data from \$CRIMEDB_ROOT/root/www to <www-dest> and \$CRIMEDB_ROOT/root/data to
 <data-dest>. The destinations can either be directory paths or s3:// URLs.
 
 Options:
@@ -94,21 +94,21 @@ if [[ $# -gt 0 ]] ; then
     exit 1
 fi
 
-# Make sure that the $CRIMEDB_ROOT/data directory exists; there's
+# Make sure that the $CRIMEDB_ROOT/root/data directory exists; there's
 # no particular reason that it needs to. It's existence is just
 # convention
-if [[ ! -d $CRIMEDB_ROOT/data ]] ; then
-    echo >&2 "$EXEC: \$CRIMEDB_ROOT/data does not exist"
+if [[ ! -d $CRIMEDB_ROOT/root/data ]] ; then
+    echo >&2 "$EXEC: \$CRIMEDB_ROOT/root/data does not exist"
     exit 1
 fi
 
 rsync -a \
     '--exclude=*.swp' \
-    $CRIMEDB_ROOT/data $WORKDIR/
+    $CRIMEDB_ROOT/root/data $WORKDIR/
 
 rsync -a \
     '--exclude=*.swp' \
-    $CRIMEDB_ROOT/www $WORKDIR/
+    $CRIMEDB_ROOT/root/www $WORKDIR/
 
-do_sync $CRIMEDB_ROOT/www $dest_www
-do_sync $CRIMEDB_ROOT/data $dest_data
+do_sync $CRIMEDB_ROOT/root/www $dest_www
+do_sync $CRIMEDB_ROOT/root/data $dest_data

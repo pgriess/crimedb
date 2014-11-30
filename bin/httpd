@@ -19,8 +19,8 @@
 EXEC=$(basename $0)
 APACHECTL=/opt/local/apache2/bin/apachectl
 CRIMEDB_ROOT=$(readlink -f $(dirname $0)/..)
-CRIMEDB_WWW_ROOT=${CRIMEDB_ROOT}/www
-CRIMEDB_DATA_ROOT=${CRIMEDB_ROOT}/data
+CRIMEDB_WWW_ROOT=${CRIMEDB_ROOT}/root/www
+CRIMEDB_DATA_ROOT=${CRIMEDB_ROOT}/root/data
 
 exec sudo env \
     CRIMEDB_WWW_ROOT=$CRIMEDB_WWW_ROOT \
