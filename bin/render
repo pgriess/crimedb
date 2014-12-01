@@ -365,9 +365,27 @@ else:
 if os.path.exists(args.output_dir):
     shutil.rmtree(args.output_dir)
 
-# Start by copying the www directory to the destination, ignoring any directories
-# that start with our special '_' prefix
-shutil.copytree(args.www_dir, args.output_dir, ignore=shutil.ignore_patterns('_*'))
+# Symlink file in the www directory into the destination.
+#
+# By convention, ignore any directories that start with our special '_' prefix.
+# We use this instead of the normal '.' so that these directories are more
+# obviously visible via ls(1) and under source control.
+for dp, dnames, fnames in os.walk(args.www_dir, topdown=True):
+    # Strip paths prefixed with '_'
+    dnames[:] = [dn for dn in dnames if not dn.startswith('_')]
+    fnames[:] = [fn for fn in fnames if not fn.startswith('_')]
+
+    rd = os.path.relpath(dp, args.www_dir)
+    od = os.path.join(args.output_dir, rd)
+    sd = os.path.relpath(dp, od)
+
+    if not os.path.isdir(od):
+        os.makedirs(od)
+
+    for fn in fnames:
+        src = os.path.join(sd, fn)
+        dest = os.path.join(od, fn)
+        os.symlink(src, dest)
 
 render_grid(args)
 call_per_region(args.data_dir, functools.partial(render_timeseries, args))
