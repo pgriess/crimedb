@@ -250,7 +250,7 @@
                 map.removeLayer(l);
             });
             self.currentLayers = [];
-            $('.legend').remove();
+            $('.crimeDBLegend').remove();
 
             var gd = tilesForMap(map).reduce(
                 function(acc, t) {
@@ -308,18 +308,32 @@
 
             l = L.control({position: 'bottomright'});
             l.onAdd = function(map) {
-                var div = L.DomUtil.create('div', 'legend');
+                var legendDiv = L.DomUtil.create('div', 'crimeDBLegend');
+                legendDiv.setAttribute(
+                    'style',
+                    'background: white; ' +
+                        'opacity: 1.0; ' +
+                        'padding: 5px; ' +
+                        'margin: 5px; ' +
+                        'border: 1px solid grey;'
+                );
                 for (var i = colorBuckets.length - 1; i > 0; --i) {
-                    var text = colorBuckets[i - 1] + ' - ' + colorBuckets[i];
-
-                    div.innerHTML +=
-                        '<i class="swatch" ' +
-                            'style="background: ' +
-                            GRID_COLORS[i - 1] +
-                            ';"></i>' + text + '<br/>';
+                    var swatch = L.DomUtil.create('i', '', legendDiv);
+                    swatch.setAttribute(
+                        'style',
+                        'background: ' + GRID_COLORS[i - 1] + ';' +
+                            'height: 10px; ' +
+                            'width: 10px; ' +
+                            'margin: 3px; ' +
+                            'float: left; ' +
+                            'opacity: 0.4;'
+                    );
+                    var label = L.DomUtil.create('span', '', legendDiv);
+                    label.innerHTML = colorBuckets[i - 1] + ' - ' + colorBuckets[i];
+                    L.DomUtil.create('br', '', legendDiv);
                 }
 
-                return div;
+                return legendDiv;
             };
             l.addTo(map);
             self.currentLayers.push(l);
