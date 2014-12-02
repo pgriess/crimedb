@@ -16,7 +16,7 @@
 -->
 
     <head>
-        <title>CrimeDB</title>
+        <title>CrimeDB - Developers</title>
 
         <style type="text/css">
             body {
@@ -39,20 +39,43 @@
     </head>
 
     <body>
-        <center><h1>CrimeDB - Developers</h1></center>
+        <center><h1>Developers</h1></center>
 
         <p>
             CrimeDB is intended to be an open repository of data for
             anyone to use. As such, all code is available on
-            <a href="http://github.com/pgriess/crimedb">GitHub</a> and licensed under
-            <a href="http://www.apache.org/licenses/LICENSE-2.0">ASL 2.0</a>.
-            All data is licensed under <a href="http://creativecommons.org/licenses/by/4.0/legalcode">CC BY</a>
-            license.
+            <a href="https://github.com/pgriess/crimedb">GitHub</a> and licensed under
+            <a href="https://www.apache.org/licenses/LICENSE-2.0">ASL 2.0</a>.
         </p>
 
         <p>
-            All data is available at <tt>data.crimedb.org</tt>.
+            There are two ways to use this data: by using the
+            <a href="https://leafletjs.com/">LeafletJS</a> plugin to overlay a a
+            heatmap of crime data onto your map, or by downloading bulk data
+            files from <tt>data.crimedb.org</tt>.
         </p>
+
+        <h3>Using the LeafletJS plugin</h3>
+
+        <p>
+            The CrimeDB data can be easily overlaid on top of an existing
+            <a href="https://leafletjs.com">LeafletJS</a> using only a few
+            lines of JavaScript. It's as easy as:
+        </p>
+
+        <pre><code>
+&lt;script type="text/javascript" src="//www.crimedb.org/js/crimedb-leaflet.js">&lt;/script>
+...
+map.addLayer(new crimedb.CrimeDBLayer());
+        </code></pre>
+
+        <p>
+            Check out <a href="leaflet-example.html">this working example</a>
+            and view source if you want a bit more information. It really is
+            that simple.
+        </p>
+
+        <h3>Bulk data downloads</h3>
 
         <p>
             A list of all datasets available can be found by issuing a GET

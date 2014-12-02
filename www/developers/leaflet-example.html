@@ -1,0 +1,57 @@
+<html>
+<!--
+ Copyright 2014 Peter Griess
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<head>
+    <!-- Load LeafletJS -->
+    <link rel="stylesheet" href="//cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+    <script src="//cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+
+    <!-- Load jQuery; required by CrimeDB LeafletJS plugin -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.js"></script>
+
+    <!-- Load CrimeDB LeafletJS plugin -->
+    <script type="text/javascript" src="//www.crimedb.org/js/crimedb-leaflet.js"></script>
+
+    <script type="text/javascript">
+        window.onload = function() {
+            var map = L.map('map');
+
+            /* Add a base tile layer for showing steets and whatnot */
+            L.tileLayer(
+                'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            /* Add the CrimeDB hetmap overlay */
+            map.addLayer(new crimedb.CrimeDBLayer());
+
+            /* Center on St Louis, MO USA where we know we have good data */
+            map.setView([38.638641, -90.283651], 14);
+        };
+    </script>
+
+    <style type="text/css">
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+</body>
+</html>
