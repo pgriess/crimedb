@@ -136,10 +136,9 @@
     };
 
     var CrimeDBLayer = L.Class.extend({
-        initialize: function(region) {
+        initialize: function() {
             var self = this;
 
-            self.region = region;
             self.currentLayers = [];
             self.currentBounds = null;
             self.crimeDBData = {};

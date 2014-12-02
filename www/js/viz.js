@@ -48,7 +48,7 @@ define(
 
                 map.addLayer(new L.StamenTileLayer('toner-lite'))
                     .setView(initLoc, 14);
-                map.addLayer(new crimedb.CrimeDBLayer(region));
+                map.addLayer(new crimedb.CrimeDBLayer());
 
                 updateTimeseries();
 
