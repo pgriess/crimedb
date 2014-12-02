@@ -56,6 +56,12 @@
     ];
 
     /**
+     * Attribution text to display with CrimeDB layers.
+     */
+    var ATTRIBUTION_TEXT =
+        'Crime data from <a href="//www.crimedb.org/">CrimeDB</a>';
+
+    /**
      * Compute the requested percentiles (which must be in the range [0,
      * 1.0]) for the given array of values, returning them in an array.
      */
@@ -158,6 +164,8 @@
             // Perform the initial udpate rather than waiting for the user
             // to do something
             self.updateCallback();
+
+            map.attributionControl.addAttribution(ATTRIBUTION_TEXT)
         },
 
         onRemove: function(map) {
@@ -175,6 +183,8 @@
                 map.removeLayer(l);
             });
             self.currentLayers = [];
+
+            map.attributionControl.removeAttribution(ATTRIBUTION_TEXT);
         },
 
         update: function(map) {
