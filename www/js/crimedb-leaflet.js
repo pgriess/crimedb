@@ -24,12 +24,12 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'leaflet'], factory);
+        define(['leaflet'], factory);
     } else {
         // Browser globals
-        root.crimedb = factory(root.$, root.L);
+        root.crimedb = factory(root.L);
     }
-}(this, function ($, L) {
+}(this, function (L) {
     // Colors to use for our heatmap; from http://www.colorbrewer2.org/
     var GRID_COLORS = [
         '#3288BD',
@@ -207,29 +207,25 @@
                 if (url in self.crimeDBData) {
                     maybeRenderGrid();
                 } else {
-                    $.ajax(url, {
-                        success: function(gd) {
-                            self.crimeDBData[url] = gd;
-                        },
+                    var req = new XMLHttpRequest();
+                    req.onreadystatechange = function() {
+                        if (req.readyState !== 4) {
+                            return;
+                        }
 
-                        statusCode: {
-                            // If we get a 404 from the server that just
-                            // means that there is no data for this tile.
-                            // Mark it as such and move on.
-                            404: function() {
-                                self.crimeDBData[url] = null;
-                            },
-                        },
+                        if (req.status === 200) {
+                            self.crimeDBData[url] = JSON.parse(req.response);
+                        } else if (req.status === 404) {
+                            self.crimeDBData[url] = null;
+                        } else {
+                            return;
+                        }
 
-                        // Regardless of success/failure we should attempt
-                        // to render things.
-                        complete: function() {
-                            maybeRenderGrid();
-                        },
-
-                        // TODO: Need failure handler to retry on timeouts
-                        //       and other soft errors.
-                    });
+                        maybeRenderGrid();
+                    };
+                    req.open('GET', url);
+                    req.responseType = 'text';
+                    req.send();
                 }
             });
         },
@@ -250,7 +246,10 @@
                 map.removeLayer(l);
             });
             self.currentLayers = [];
-            $('.crimeDBLegend').remove();
+            var legend = L.DomUtil.get('crimeDBLegend');
+            if (legend) {
+                legend.remove();
+            }
 
             var gd = tilesForMap(map).reduce(
                 function(acc, t) {
@@ -308,7 +307,8 @@
 
             l = L.control({position: 'bottomright'});
             l.onAdd = function(map) {
-                var legendDiv = L.DomUtil.create('div', 'crimeDBLegend');
+                var legendDiv = L.DomUtil.create('div');
+                legendDiv.setAttribute('id', 'crimeDBLegend');
                 legendDiv.setAttribute(
                     'style',
                     'background: white; ' +
