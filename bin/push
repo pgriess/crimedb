@@ -35,7 +35,7 @@ do_sync() {
 
     case $dest in
         s3://*)
-            s3cmd -P -v sync \
+            s3cmd -F -P -v sync \
                 --delete-removed \
                 $src/ $dest/
             ;;
