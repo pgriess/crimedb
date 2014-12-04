@@ -34,6 +34,11 @@
                 border: 2px solid grey;
                 clear: both;
             }
+
+            .nice-input {
+                margin: 5px;
+                font-size: 16px;
+            }
         </style>
 
         <script>
@@ -45,7 +50,6 @@
           ga('create', 'UA-18586119-3', 'crimedb.org');
           ga('send', 'pageview');
         </script>
-
     </head>
 
     <body>
@@ -64,12 +68,17 @@
             href="/developers">developers</a> page for more information.
         </p>
 
-        <div id="map"></div>
-
         <p>
             For more information, contact
             <a href="mailto:info@crimedb.org">info@crimedb.org</a> or
             <a href="http://twitter.com/pgriess">@pgriess</a>.
         </p>
+
+        <div id="map"></div>
+        <div>
+            Go to address (include zip code):
+            <input type="text" id="address" class="nice-input" style="width: 50%;"/>
+            <button id="gobutton" class="nice-input">Go!</button>
+        </div>
     </body>
 </html>

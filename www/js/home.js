@@ -13,22 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * JavaScript for the CrimeDB homepage.
+ */
 
 requirejs.config({
     baseUrl: '/js',
+    paths: {
+        async: 'lib/requirejs/async',
+    },
 });
 
 requirejs(
-    ['leaflet', 'crimedb-leaflet', 'stamen-leaflet'],
-    function(L) {
-        var onLoad = function(e) {
+    ['leaflet', 'jquery', 'gmaps', 'crimedb-leaflet', 'stamen-leaflet'],
+    function(L, $, gmaps) {
+        var geocoder = new gmaps.Geocoder();
+
+        var goToAddress = function(map, address) {
+            geocoder.geocode({address: address}, function(results, status) {
+                if (status === gmaps.GeocoderStatus.OK) {
+                    var loc = results[0].geometry.location;
+                    map.setView([loc.lat(), loc.lng()], 14);
+                }
+            });
+        };
+
+        $(document).ready(function() {
             var map = L.map('map');
 
             map.addLayer(new L.StamenTileLayer('toner-lite'))
                 .addLayer(new L.CrimeDBLayer())
                 .setView([38.638641, -90.283651], 14);
-        };
 
-        window.addEventListener('load', onLoad, false);
+            $('#gobutton').click(function() {
+                goToAddress(map, $('#address').val());
+            });
+        });
     }
 );
