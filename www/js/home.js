@@ -25,8 +25,8 @@ requirejs.config({
 });
 
 requirejs(
-    ['leaflet', 'jquery', 'gmaps', 'crimedb-leaflet', 'stamen-leaflet'],
-    function(L, $, gmaps) {
+    ['leaflet', 'jquery', 'gmaps', 'ga', 'crimedb-leaflet', 'stamen-leaflet'],
+    function(L, $, gmaps, ga) {
         var geocoder = new gmaps.Geocoder();
 
         var goToAddress = function(map, address) {
@@ -43,6 +43,11 @@ requirejs(
         };
 
         $(document).ready(function() {
+            if (ga) {
+                ga('create', 'UA-18586119-3', 'crimedb.org');
+                ga('send', 'pageview');
+            }
+
             var map = L.map('map');
 
             map.addLayer(new L.StamenTileLayer('toner-lite'))

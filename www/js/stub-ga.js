@@ -13,20 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * JavaScript for otherwise un-interesting pages.
+ */
 
 requirejs.config({
     baseUrl: '/js',
 });
 
 requirejs(
-    ['viz', 'ga'],
-    function(viz, ga) {
-        if (ga) {
-            ga('create', 'UA-18586119-3', 'crimedb.org');
-            ga('send', 'pageview');
+    ['ga'],
+    function(ga) {
+        if (!ga) {
+            return;
         }
 
-        var CENTER = [{{center_lat}}, {{center_lon}}];
-        viz.setupViz('{{region}}', CENTER);
+        ga('create', 'UA-18586119-3', 'crimedb.org');
+        ga('send', 'pageview');
     }
 );

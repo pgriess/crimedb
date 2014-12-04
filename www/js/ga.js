@@ -13,20 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * Wrap the Google Analytics API in an AMD module.
+ */
 
-requirejs.config({
-    baseUrl: '/js',
-});
+define(
+    function() {
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-requirejs(
-    ['viz', 'ga'],
-    function(viz, ga) {
-        if (ga) {
-            ga('create', 'UA-18586119-3', 'crimedb.org');
-            ga('send', 'pageview');
-        }
-
-        var CENTER = [{{center_lat}}, {{center_lon}}];
-        viz.setupViz('{{region}}', CENTER);
+        return window.ga;
     }
 );
