@@ -18,11 +18,21 @@
     <head>
         <title>CrimeDB</title>
 
+        <link rel="stylesheet" href="/css/leaflet.css" />
+        <script type="text/javascript" data-main="/js/home.js" src="/js/require.js"></script>
+
         <style type="text/css">
             body {
                 font-family: helvetica;
                 margin-left: 10%;
                 margin-right: 10%;
+            }
+
+            #map {
+                height: 70%;
+                width: 100%;
+                border: 2px solid grey;
+                clear: both;
             }
         </style>
 
@@ -42,22 +52,19 @@
         <center><h1>CrimeDB</h1></center>
 
         <p>
-            CrimeDB is an easy-to-use database of crime incidents.
+            CrimeDB is an easy-to-use database of crime incidents from around
+            the USA.
         </p>
 
         <p>
-            <b>Citizens</b> can use CrimeDB to view information about crime activity
-            in their area, including which areas are more affected than others.
-            See the <a href="/r/stl">St. Louis City</a> or <a
-            href="/r/stlco">St. Louis County</a> pages for an example.
+            <b>Citizens</b> can use CrimeDB to view information about crime
+            activity in their area, including which areas are more affected
+            than others.  <b>Developers</b> can use CrimeDB data in their
+            applications with its easy-to-use API. See the <a
+            href="/developers">developers</a> page for more information.
         </p>
 
-        <p>
-            <b>Developers</b> can use CrimeDB data in their applications with
-            its easy-to-use API. See the <a href="/developers">developers</a>
-            page for more information.
-        </p>
-
+        <div id="map"></div>
 
         <p>
             For more information, contact
