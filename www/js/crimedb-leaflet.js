@@ -350,6 +350,9 @@
         }
     });
 
+    // Add to the L class as seemst to be convention for LeafletJS plugins
+    L.CrimeDBLayer = CrimeDBLayer;
+
     return {
         CrimeDBLayer: CrimeDBLayer
     };
