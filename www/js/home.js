@@ -30,6 +30,10 @@ requirejs(
         var geocoder = new gmaps.Geocoder();
 
         var goToAddress = function(map, address) {
+            if (ga) {
+                ga('send', 'event', 'map', 'go');
+            }
+
             geocoder.geocode({address: address}, function(results, status) {
                 if (status === gmaps.GeocoderStatus.OK) {
                     var loc = results[0].geometry.location;
