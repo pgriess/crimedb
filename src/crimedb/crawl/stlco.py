@@ -56,6 +56,13 @@ __TZ = pytz.timezone('US/Central')
 
 __LOGGER = logging.getLogger(__name__)
 
+# XXX: We should really get this from the 'spatialReference'
+#      'latestWkid' field in the results object. Unfortunately
+#      the current fetching/caching strategy doesn't really
+#      accommodate this very well. Probably worth re-visiting.
+__PROJ = pyproj.Proj(init='epsg:3857')
+
+
 def __cache_dir(work_dir):
     cache_dir = os.path.join(work_dir, 'raw')
     os.makedirs(cache_dir, exist_ok=True)
@@ -117,12 +124,6 @@ def crimes(work_dir, download=True, **kwargs):
     if download:
         __download(work_dir)
 
-    # XXX: We should really get this from the 'spatialReference'
-    #      'latestWkid' field in the results object. Unfortunately
-    #      the current fetching/caching strategy doesn't really
-    #      accommodate this very well. Probably worth re-visiting.
-    proj = pyproj.Proj(init='epsg:3857')
-
     incidents_path = os.path.join(__cache_dir(work_dir), 'incidents')
     if not os.path.exists(incidents_path):
         return
@@ -134,8 +135,7 @@ def crimes(work_dir, download=True, **kwargs):
             attrs = fo['attributes']
             geom = fo['geometry']
 
-            loc = proj(geom['x'], geom['y'],
-                       inverse=True, errcheck=True)
+            loc = __PROJ(geom['x'], geom['y'], inverse=True, errcheck=True)
 
             c = crimedb.core.Crime(
                     attrs['Offense'],
