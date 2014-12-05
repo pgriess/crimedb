@@ -106,17 +106,28 @@ now = UTC_TZ.localize(
                 time.mktime(time.gmtime())))
 
 for region_name in args.region_names:
-    work_dir = os.path.join(args.work_dir, region_name)
-    data_dir = os.path.join(args.data_dir, region_name)
-
     logging.info('crawling region {}'.format(region_name))
 
-    with open(os.path.join(data_dir, 'index.json'), 'rt') as mf:
-        meta_obj = json.load(mf)
+    work_dir = os.path.join(args.work_dir, region_name)
+    if not os.path.isdir(work_dir):
+        os.makedirs(work_dir)
+
+    data_dir = os.path.join(args.data_dir, region_name)
+    if not os.path.isdir(data_dir):
+        os.makedirs(data_dir)
+
+    region = None
+
+    meta_path = os.path.join(data_dir, 'index.json')
+    if os.path.isfile(meta_path):
+        with open(meta_path, 'rt') as mf:
+            meta_obj = json.load(mf)
+
+        region = shapely.geometry.shape(meta_obj['geo'])
+    else:
+        meta_obj = {}
 
     region_kwargs = kwargs.copy()
-
-    region = shapely.geometry.shape(meta_obj['geo'])
     region_kwargs['region'] = region
 
     if args.mapquest_api_key:
