@@ -42,14 +42,14 @@ sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 import crimedb.cli
 import crimedb.core
 import crimedb.geocoding
-import crimedb.stl
-import crimedb.stlco
+import crimedb.crawl.stl
+import crimedb.crawl.stlco
 
 UTC_TZ = pytz.timezone('UTC')
 
 CRIME_ITERATORS = {
-    'stl': crimedb.stl.crimes,
-    'stlco': crimedb.stlco.crimes,
+    'stl': crimedb.crawl.stl.crimes,
+    'stlco': crimedb.crawl.stlco.crimes,
 }
 
 
