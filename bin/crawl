@@ -138,6 +138,9 @@ for region_name in args.region_names:
 
     crimes_by_month_filenames = defaultdict(list)
     for c in CRIME_ITERATORS[region_name](work_dir, **region_kwargs):
+        if not c.time:
+            continue
+
         crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
 
     logging.info('sorting month data')
