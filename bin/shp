@@ -1,0 +1,94 @@
+#!/bin/env python3.3
+#
+# Copyright 2014 Peter Griess
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Work with shapfiles.
+
+import argparse
+import json
+import os.path
+import shapefile
+import shapely.geometry
+import sys
+
+# Add src/ directory to PYTHONPATH so that this can be run without the operator
+# having to configure that manually
+sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
+
+import crimedb.cli
+
+def fields_cmd(args):
+    sf = shapefile.Reader(args.shapefile)
+    print('\t'.join([f[0] for f in sf.fields]))
+
+    i = 0
+    for r in sf.records():
+        print('\t'.join([str(i)] + [str(f) for f in r]))
+        i += 1
+
+    sys.exit(0)
+
+
+def export_cmd(args):
+    sf = shapefile.Reader(args.shapefile)
+    so = shapely.geometry.shape(sf.shape(args.index))
+    json.dump(shapely.geometry.mapping(so), sys.stdout)
+
+
+ap = argparse.ArgumentParser(
+    description='Work with Esri shapefiles',
+    parents=[crimedb.cli.logging_argument_parser])
+
+sp = ap.add_subparsers()
+
+export_parser = sp.add_parser(
+        'export',
+        help='export a GeoJSON object',
+        description='''
+Extract a shape from the shapefile and write it to stdout as a GeoJSON object.
+''')
+export_parser.add_argument(
+        'shapefile',
+        metavar='<shapefile>',
+        help='''
+path to the shapefile; should be able to get all components of the shapefile by
+appending suffixes to this value (e.g. <shapfile>.shp, <shapefile>.dbf, etc).
+''')
+export_parser.add_argument(
+        'index',
+        metavar='<index>',
+        type=int,
+        help='''
+index of the shape to extract as GeoJSON
+''')
+export_parser.set_defaults(func=export_cmd)
+
+fields_parser = sp.add_parser(
+        'fields',
+        help='show shapefile record fields',
+        description='''
+Display the set of record fields in the shapefile.
+''')
+fields_parser.add_argument(
+        'shapefile',
+        metavar='<shapefile>',
+        help='''
+path to the shapefile; should be able to get all components of the shapefile by
+appending suffixes to this value (e.g. <shapfile>.shp, <shapefile>.dbf, etc).
+''')
+fields_parser.set_defaults(func=fields_cmd)
+
+args = ap.parse_args()
+args.func(args)
