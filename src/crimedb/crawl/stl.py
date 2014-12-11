@@ -239,27 +239,35 @@ def __process_raw_file(work_dir, file_path, geocoder, region):
         write_crime_dict(cd, loc)
 
 
-def crimes(work_dir, geocoder=crimedb.geocoding.geocode_null,
-           region=None, download=True, **kwargs):
+def download(work_dir, **kwargs):
+    '''
+    Download any missing data.
+    '''
+
+    __download_raw_files(work_dir)
+
+
+def process(work_dir, geocoder=crimedb.geocoding.geocode_null, region=None,
+            **kwargs):
+    '''
+    Process downloaded files.
+    '''
+
+    for fn in os.listdir(__cache_dir(work_dir)):
+        __process_raw_file(
+                work_dir,
+                os.path.join(__cache_dir(work_dir), fn),
+                geocoder,
+                region)
+
+
+def crimes(work_dir, **kwargs):
     '''
     Iterator which yields Crime objects.
 
     'work_dir' is a filesystem directory with which to maintain state across
     processing runs.
-
-    'download' indiciates whether or not to download new files.
-
-    'geocoder' is a generator function that takes an interator of
-    addresses and emits locations (or None on failure)
-
-    'region' is a shapely.geometry object describing the region for
-    which we're fetching crimes; locations will be constrained such
-    that they're within this area
     '''
-
-    if download:
-        for fp in __download_raw_files(work_dir):
-            __process_raw_file(work_dir, fp, geocoder, region)
 
     int_dir = __intermediate_dir(work_dir)
 

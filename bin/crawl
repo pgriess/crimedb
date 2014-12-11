@@ -48,11 +48,94 @@ import crimedb.crawl.stlco
 
 UTC_TZ = pytz.timezone('UTC')
 
-CRIME_ITERATORS = {
-    'dallas': crimedb.crawl.dallas.crimes,
-    'stl': crimedb.crawl.stl.crimes,
-    'stlco': crimedb.crawl.stlco.crimes,
+NOW = UTC_TZ.localize(
+        datetime.datetime.fromtimestamp(
+                time.mktime(time.gmtime())))
+
+CRIME_MODULES = {
+    'dallas': crimedb.crawl.dallas,
+    'stl': crimedb.crawl.stl,
+    'stlco': crimedb.crawl.stlco,
 }
+
+
+def cmd_download(args):
+    for region_name in args.region_names:
+        logging.info('downloading from region {}'.format(region_name))
+
+        work_dir = os.path.join(args.work_dir, region_name)
+        CRIME_MODULES[region_name].download(work_dir)
+
+
+def cmd_process(args):
+    geocoder = crimedb.geocoding.geocode_null
+    if args.mapquest_api_key:
+        geocoder = functools.partial(
+                crimedb.geocoding.geocode_mapquest,
+                args.mapquest_api_key,
+                region=region)
+
+    for region_name in args.region_names:
+        logging.info('processing data from region {}'.format(region_name))
+
+        work_dir = os.path.join(args.work_dir, region_name)
+        data_dir = os.path.join(args.data_dir, region_name)
+
+        meta_path = os.path.join(data_dir, 'index.json')
+        with open(meta_path, 'rt') as mf:
+            meta_obj = json.load(mf)
+
+        region = shapely.geometry.shape(meta_obj['geo'])
+
+        CRIME_MODULES[region_name].process(
+                work_dir, geocoder=geocoder, region=region)
+
+
+def cmd_collate(args):
+    for region_name in args.region_names:
+        logging.info('collating data from region {}'.format(region_name))
+
+        work_dir = os.path.join(args.work_dir, region_name)
+        data_dir = os.path.join(args.data_dir, region_name)
+
+        meta_path = os.path.join(data_dir, 'index.json')
+        with open(meta_path, 'rt') as mf:
+            meta_obj = json.load(mf)
+
+        crimes_by_month_filenames = defaultdict(list)
+        for c in CRIME_MODULES[region_name].crimes(work_dir):
+            if not c.time:
+                continue
+
+            crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
+
+        logging.info('sorting month data for region {}'.format(region_name))
+        for cm, cl in crimes_by_month_filenames.items():
+            crimes_by_month_filenames[cm] = sorted(cl, key=lambda c: c.time)
+
+        logging.info('writing month files for region {}'.format(region_name))
+        for fn, crimes in crimes_by_month_filenames.items():
+            with open(os.path.join(data_dir, fn), 'wt') as mf:
+                json.dump({
+                        'update_time': NOW.strftime(
+                                crimedb.core.RFC3999_STRFTIME_FORMAT),
+                        'crimes': [crimedb.core.crime2json_obj(c) for c in crimes],
+                    },
+                    mf
+                )
+
+        logging.info('updating index.json for region {}'.format(region_name))
+
+        meta_obj['update_time'] = NOW.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT)
+        meta_obj['files'] = list(sorted(crimes_by_month_filenames.keys()))
+
+        with open(os.path.join(data_dir, 'index.json'), 'wt') as mf:
+            json.dump(meta_obj, mf)
+
+    # Write a JSON file to the root of the data directory listing the set of datasets
+    # available
+    with open(os.path.join(args.data_dir, 'index.json'), 'wt') as mf:
+        json.dump({'regions': list(args.region_names)}, mf)
 
 
 ap = argparse.ArgumentParser(
@@ -63,53 +146,67 @@ files.
         parents=[
             crimedb.cli.logging_argument_parser,
             crimedb.cli.config_argument_parser])
-ap.add_argument('region_names', nargs='*', metavar='<region>',
-                help=('fetch data from the given region (default: all '
-                      'regions); use --list-regions to see a list of all '
-                      'valid regions'))
-ap.add_argument('--data-dir', metavar='<dir>',
-                help='data directory (default: %(default)s)')
-ap.add_argument('--work-dir', metavar='<dir>',
-                help='work directory (default: %(default)s)')
-ap.add_argument('--mapquest-api-key', metavar='<key>',
-                help='set MapQuest API key')
-ap.add_argument('--list-regions', action='store_true', default=None,
-                help='list valid region names')
-ap.add_argument('--no-download', action='store_true', default=None,
-                help='do not download new data')
+ap.add_argument(
+        '--data-dir', metavar='<dir>',
+        help='data directory (default: %(default)s)')
+ap.add_argument(
+        '--work-dir', metavar='<dir>',
+        help='work directory (default: %(default)s)')
+ap.add_argument(
+        '--region', metavar='<region>', default=[],
+        action='append', dest='region_names',
+        help='''
+fetch data from the given region; can be specified multiple times to fetch from
+multiple specific regions (default: all regions)
+''')
+sp = ap.add_subparsers()
+
+download_parser = sp.add_parser(
+        'download',
+        help='download data for regions',
+        description='''
+Download data for regions for analysis by later stages of the crawling process.
+''')
+download_parser.set_defaults(func=cmd_download)
+
+process_parser = sp.add_parser(
+        'process',
+        help='process downloaded data',
+        description=''''
+Process already-downloaded raw files from each region.
+''')
+process_parser.add_argument(
+        '--mapquest-api-key', metavar='<key>',
+        help='set MapQuest API key')
+process_parser.set_defaults(func=cmd_process)
+
+collate_parser = sp.add_parser(
+        'collate',
+        help='collate processed downloaded data',
+        description=''''
+Collalte processed data into YY-MM.json files.
+''')
+collate_parser.set_defaults(func=cmd_collate)
+
 
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
 crimedb.cli.process_config_args(args, defaults={
     'data_dir': 'data',
     'work_dir': 'work',
-    'list_regions': False,
-    'no_download': False})
-
-if args.list_regions:
-    for region_name in sorted(CRIME_ITERATORS):
-        print('  {}'.format(region_name))
-    sys.exit(0)
+    'region_names': [],
+})
 
 if not args.region_names:
-    args.region_names = CRIME_ITERATORS.keys()
+    args.region_names = CRIME_MODULES.keys()
 else:
     for region_name in args.region_names:
-        if region_name not in CRIME_ITERATORS:
+        if region_name not in CRIME_MODULES:
             print('invalid region: {}'.format(region_name), file=sys.stderr)
             sys.exit(1)
 
-# Set up keyword arguments for crime iterators
-kwargs = {
-    'download': not args.no_download}
-
-now = UTC_TZ.localize(
-        datetime.datetime.fromtimestamp(
-                time.mktime(time.gmtime())))
-
+# Make sure all directories have been created
 for region_name in args.region_names:
-    logging.info('crawling region {}'.format(region_name))
-
     work_dir = os.path.join(args.work_dir, region_name)
     if not os.path.isdir(work_dir):
         os.makedirs(work_dir)
@@ -118,57 +215,7 @@ for region_name in args.region_names:
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
 
-    region = None
+if 'func' not in args:
+    ap.error('command name required')
 
-    meta_path = os.path.join(data_dir, 'index.json')
-    if os.path.isfile(meta_path):
-        with open(meta_path, 'rt') as mf:
-            meta_obj = json.load(mf)
-
-        region = shapely.geometry.shape(meta_obj['geo'])
-    else:
-        meta_obj = {}
-
-    region_kwargs = kwargs.copy()
-    region_kwargs['region'] = region
-
-    if args.mapquest_api_key:
-        region_kwargs['geocoder'] = functools.partial(
-                crimedb.geocoding.geocode_mapquest,
-                args.mapquest_api_key,
-                region=region)
-
-    crimes_by_month_filenames = defaultdict(list)
-    for c in CRIME_ITERATORS[region_name](work_dir, **region_kwargs):
-        if not c.time:
-            continue
-
-        crimes_by_month_filenames[c.time.strftime('%Y-%m.json')] += [c]
-
-    logging.info('sorting month data')
-    for cm, cl in crimes_by_month_filenames.items():
-        crimes_by_month_filenames[cm] = sorted(cl, key=lambda c: c.time)
-
-    logging.info('writing month files')
-    for fn, crimes in crimes_by_month_filenames.items():
-        with open(os.path.join(data_dir, fn), 'wt') as mf:
-            json.dump({
-                    'update_time': now.strftime(
-                            crimedb.core.RFC3999_STRFTIME_FORMAT),
-                    'crimes': [crimedb.core.crime2json_obj(c) for c in crimes],
-                },
-                mf
-            )
-
-    logging.info('updating index.json')
-
-    meta_obj['update_time'] = now.strftime(crimedb.core.RFC3999_STRFTIME_FORMAT)
-    meta_obj['files'] = list(sorted(crimes_by_month_filenames.keys()))
-
-    with open(os.path.join(data_dir, 'index.json'), 'wt') as mf:
-        json.dump(meta_obj, mf)
-
-# Write a JSON file to the root of the data directory listing the set of datasets
-# available
-with open(os.path.join(args.data_dir, 'index.json'), 'wt') as mf:
-    json.dump({'regions': list(args.region_names)}, mf)
+args.func(args)

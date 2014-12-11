@@ -45,6 +45,7 @@ import logging
 import os.path
 import pyproj
 import pytz
+import shapely.geometry
 import urllib.parse
 import urllib.request
 
@@ -68,6 +69,13 @@ def __cache_dir(work_dir):
     os.makedirs(cache_dir, exist_ok=True)
 
     return cache_dir
+
+
+def __intermediate_dir(work_dir):
+    int_dir = os.path.join(work_dir, 'intermediate')
+    os.makedirs(int_dir, exist_ok=True)
+
+    return int_dir
 
 
 def __download(work_dir):
@@ -116,13 +124,19 @@ def __download(work_dir):
                 f.write(json.dumps(feature) + '\n')
 
 
-def crimes(work_dir, download=True, **kwargs):
+def download(work_dir, **kwargs):
     '''
-    Iterator which yields Crime objects.
+    Download any missing data.
     '''
 
-    if download:
-        __download(work_dir)
+    __download(work_dir)
+
+
+def process(work_dir, geocoder=crimedb.geocoding.geocode_null, region=None,
+            **kwargs):
+    '''
+    Process downloaded files.
+    '''
 
     incidents_path = os.path.join(__cache_dir(work_dir), 'incidents')
     if not os.path.exists(incidents_path):
@@ -136,12 +150,37 @@ def crimes(work_dir, download=True, **kwargs):
             geom = fo['geometry']
 
             loc = __PROJ(geom['x'], geom['y'], inverse=True, errcheck=True)
+            point = shapely.geometry.Point(*loc)
+            if region and not region.contains(point):
+                __LOGGER.debug(
+                        ('crime {cid} at ({lon}, {lat}) is outside of our'
+                         'region; stripping location').format(
+                             cid=attrs['GlobalID'], lon=loc[0], lat=loc[1]))
+                loc = None
 
-            c = crimedb.core.Crime(
-                    attrs['Offense'],
-                    datetime.datetime.fromtimestamp(
-                            attrs['Date'] / 1000,
-                            __TZ),
-                    loc)
+            date = datetime.datetime.fromtimestamp(attrs['Date'] / 1000, __TZ)
 
-            yield c
+            c = crimedb.core.Crime(attrs['Offense'], date, loc)
+
+            int_fp = os.path.join(
+                    __intermediate_dir(work_dir),
+                    datetime.datetime.strftime(date, '%y-%m'))
+
+            with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
+                f.write(json.dumps(crimedb.core.crime2json_obj(c)))
+                f.write('\n')
+
+
+def crimes(work_dir, download=True, **kwargs):
+    '''
+    Iterator which yields Crime objects.
+    '''
+
+    int_dir = __intermediate_dir(work_dir)
+
+    for file_name in os.listdir(int_dir):
+        fp = os.path.join(int_dir, file_name)
+        with open(fp, 'rt', encoding='utf-8', errors='replace') as rf:
+            for l in rf:
+                yield crimedb.core.json_obj2crime(
+                        json.loads(l.strip()))
