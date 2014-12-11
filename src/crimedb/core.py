@@ -46,8 +46,10 @@ def crime2json_obj(crime):
 
     jo = {
         'description': crime.description,
-        'time': crime.time.strftime(RFC3999_STRFTIME_FORMAT),
     }
+
+    if crime.time:
+        jo['time'] = crime.time.strftime(RFC3999_STRFTIME_FORMAT)
 
     if crime.location:
         jo['geo'] = {
@@ -64,8 +66,11 @@ def json_obj2crime(jo):
     '''
 
     description = jo['description']
-    time = datetime.datetime.strptime(
-            jo['time'], RFC3999_STRFTIME_FORMAT)
+
+    time = None
+    if 'time' in jo:
+        time = datetime.datetime.strptime(
+                jo['time'], RFC3999_STRFTIME_FORMAT)
 
     location = None
     if 'geo' in jo:
