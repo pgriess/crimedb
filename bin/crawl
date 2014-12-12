@@ -42,9 +42,9 @@ sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 import crimedb.cli
 import crimedb.core
 import crimedb.geocoding
-import crimedb.crawl.dallas
-import crimedb.crawl.stl
-import crimedb.crawl.stlco
+import crimedb.regions.dallas
+import crimedb.regions.stl
+import crimedb.regions.stlco
 
 UTC_TZ = pytz.timezone('UTC')
 
@@ -53,9 +53,9 @@ NOW = UTC_TZ.localize(
                 time.mktime(time.gmtime())))
 
 CRIME_MODULES = {
-    'dallas': crimedb.crawl.dallas,
-    'stl': crimedb.crawl.stl,
-    'stlco': crimedb.crawl.stlco,
+    'dallas': crimedb.regions.dallas,
+    'stl': crimedb.regions.stl,
+    'stlco': crimedb.regions.stlco,
 }
 
 
