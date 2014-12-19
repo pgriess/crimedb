@@ -16,8 +16,12 @@
 Base class for region implementations.
 '''
 
+import io
+import json
 import os
 import os.path
+import pkg_resources
+import shapely.geometry
 
 
 class Region(object):
@@ -28,9 +32,14 @@ class Region(object):
     other code.
     '''
 
-    def __init__(self, name, work_dir, shape):
+    def __init__(self, name, work_dir=None, shape=None):
         self.name = name
         self.work_dir = work_dir
+
+        if not shape:
+            with pkg_resources.resource_stream(__name__, '{}.geojson'.format(name)) as f:
+                tf = io.TextIOWrapper(f, encoding='utf-8', errors='replace')
+                shape = shapely.geometry.shape(json.load(tf))
         self.shape = shape
 
     def download(self):

@@ -201,13 +201,7 @@ for region_name in args.region_names:
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
 
-    shape = None
-    mp = os.path.join(data_dir, 'index.json')
-    if os.path.isfile(mp):
-        with open(mp, 'rt', encoding='utf-8') as mf:
-            shape = shapely.geometry.shape(json.load(mf)['geo'])
-
-    regions[region_name] = CRIME_REGIONS[region_name](work_dir, shape)
+    regions[region_name] = CRIME_REGIONS[region_name](work_dir)
 
 if 'func' not in args:
     ap.error('command name required')

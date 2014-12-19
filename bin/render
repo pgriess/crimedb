@@ -37,6 +37,9 @@ sys.path += [os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')]
 
 import crimedb.cli
 import crimedb.core
+import crimedb.regions.dallas
+import crimedb.regions.stl
+import crimedb.regions.stlco
 import crimedb.www
 
 # Grid size in lat/lon degrees
@@ -46,6 +49,12 @@ UTC_TZ = pytz.timezone('UTC')
 
 MAX_ZOOM_LEVEL = 14
 GRID_CELL_ZOOM_DEPTH = 3
+
+CRIME_REGIONS = {
+    'dallas': crimedb.regions.dallas.Region,
+    'stl': crimedb.regions.stl.Region,
+    'stlco': crimedb.regions.stlco.Region,
+}
 
 
 def call_per_region(region_dir, f):
@@ -76,7 +85,7 @@ def crimedb_filenames_for_date_range(begin, end):
     return filenames
 
 
-def grid_for_region(args, region_dir, zoom):
+def grid_for_region(args, region, region_dir, zoom):
     # Read crime data from date range
     crimes = []
     for fn in crimedb_filenames_for_date_range(args.time_from, args.time_to):
@@ -103,19 +112,13 @@ def grid_for_region(args, region_dir, zoom):
 
     grid = crimedb.www.grid_from_crimes(crimes, zoom)
 
-    # We need to inject 0s for cells that are within our region but have no
-    # crimes. Without this, the sparse cells will not be set and will thus be
-    # interpreted as out-of-region rather than real 0s.
-    with open(os.path.join(region_dir, 'index.json'), 'rt', encoding='utf-8') as mf:
-        region_shape = shapely.geometry.shape(json.load(mf)['geo'])
-
     # Compute the range of (x, y) tile coordinates at our zoom level that are
     # within the region.
     #
     # NOTE: Since the Slippy map coordinate system has its origin at (-180W, +85N)
     #       the maximum latitude is our minimum Y value while the maximum longitude
     #       is our maximum X value.
-    lon_min, lat_min, lon_max, lat_max = region_shape.bounds
+    lon_min, lat_min, lon_max, lat_max = region.shape.bounds
     minx, maxy = crimedb.www.slippy_tile_coordinates_from_point(
             lon_min, lat_min, zoom)
     maxx, miny = crimedb.www.slippy_tile_coordinates_from_point(
@@ -124,7 +127,7 @@ def grid_for_region(args, region_dir, zoom):
     for x in range(minx, maxx + 1):
         for y in range(miny, maxy + 1):
             cell_shape = crimedb.www.bbox_from_slippy_tile_coordinates(x, y, zoom)
-            if region_shape.intersects(cell_shape) and \
+            if region.shape.intersects(cell_shape) and \
                     y not in grid[x]:
                 grid[x][y] += 0
 
@@ -144,9 +147,10 @@ def render_grid(args):
             continue
 
         logging.info('Reading raw data for {}'.format(rn))
+        region = CRIME_REGIONS[rn]()
         grid = crimedb.www.grid_add(
                 grid,
-                grid_for_region(args, rp, initial_zoom_level))
+                grid_for_region(args, region, rp, initial_zoom_level))
 
     zgrid = crimedb.www.zgrid_from_grid(grid, initial_zoom_level, 0)
     rzgrid = crimedb.www.rzgrid_from_zgrid(zgrid, GRID_CELL_ZOOM_DEPTH)
