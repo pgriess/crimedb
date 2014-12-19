@@ -81,55 +81,50 @@ def __geocode_batch(key, locations, region=None):
 
     url = 'http://open.mapquestapi.com/geocoding/v1/batch?' + \
         urllib.parse.urlencode(query_params)
-    try:
-        ro = json.load(io.TextIOWrapper(urllib.request.urlopen(url),
-                                        encoding='utf-8',
-                                        errors='replace'))
+    ro = json.load(io.TextIOWrapper(urllib.request.urlopen(url),
+                                    encoding='utf-8',
+                                    errors='replace'))
 
-        if ro['info']['statuscode'] != 0:
-            raise Exception('\n'.join(ro['info']['messages']))
-
-        assert len(ro['results']) == len(locations), \
-                'Got {} results for {} locations'.format(len(ro['results']), len(locations))
-
-        for loc, result in zip(locations, ro['results']):
-            # XXX: The API doesn't guarantee that results are returned
-            #      in the same order that they were requested. However,
-            #      this seems to be the case in practice.
-            assert result['providedLocation']['location'] == loc
-
-            locs = result['locations']
-
-            # Filter out any locations not within our region (if specified)
-            if region:
-                locs = [l for l in locs if
-                        region.contains(shapely.geometry.Point(
-                            l['displayLatLng']['lng'],
-                            l['displayLatLng']['lat']))]
-
-            # No locations found within our region
-            if not locs:
-                yield None
-                continue
-
-            # Pick the most specific location
-            locs = sorted(result['locations'],
-                          key=cmp_to_key(__location_comparator))
-
-            yield {
-                'type': 'Point',
-                'coordinates': [
-                    locs[0]['displayLatLng']['lng'],
-                    locs[0]['displayLatLng']['lat'],
-                ],
-            }
-    except:
-        __LOGGER.warn('\n'.join([
-                'Geocoding failed; yielding empty results:',
-                traceback.format_exc()]))
-
+    if ro['info']['statuscode'] != 0:
+        __LOGGER.warn('Geocoding failed with status %d; yielding empty results'.format(ro['info']['statuscode']))
         for _ in locations:
             yield None
+            return
+
+    assert len(ro['results']) == len(locations), \
+            'Got {} results for {} locations'.format(len(ro['results']), len(locations))
+
+    for loc, result in zip(locations, ro['results']):
+        # XXX: The API doesn't guarantee that results are returned
+        #      in the same order that they were requested. However,
+        #      this seems to be the case in practice.
+        assert result['providedLocation']['location'] == loc
+
+        locs = result['locations']
+
+        # Filter out any locations not within our region (if specified)
+        if region:
+            locs = [l for l in locs if
+                    region.contains(shapely.geometry.Point(
+                        l['displayLatLng']['lng'],
+                        l['displayLatLng']['lat']))]
+
+        # No locations found within our region
+        if not locs:
+            yield None
+            continue
+
+        # Pick the most specific location
+        locs = sorted(result['locations'],
+                      key=cmp_to_key(__location_comparator))
+
+        yield {
+            'type': 'Point',
+            'coordinates': [
+                locs[0]['displayLatLng']['lng'],
+                locs[0]['displayLatLng']['lat'],
+            ],
+        }
 
 
 def geocode_mapquest(key, locations, region=None, batch_size=10):
