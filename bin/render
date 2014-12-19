@@ -166,7 +166,7 @@ def render_grid(args):
                     json.dump(gjo, of)
 
 
-def render_timeseries(args, region_name, region_path, **kwargs):
+def render_region_timeseries(args, region_name, region_path, **kwargs):
     '''
     Render JSON files to be used for rendering a HighCharts timeseries in the
     /r/<region>/index.html page and write it to /r/<region>/timeseries.json.
@@ -268,9 +268,9 @@ def render_timeseries(args, region_name, region_path, **kwargs):
         json.dump(jo, tf)
 
 
-def render_templates(args, region_name, region_path, **kwargs):
+def render_region_templates(args, region_name, region_path, **kwargs):
     '''
-    Render files from the _templates/ directory
+    Render files from the _templates/r/ directory
     '''
 
     # Create our pystache context object
@@ -293,7 +293,7 @@ def render_templates(args, region_name, region_path, **kwargs):
 
     # Walk the template directory rendering any template files to the
     # destination
-    template_path = os.path.join(args.www_dir, '_templates')
+    template_path = os.path.join(args.www_dir, '_templates', 'r')
     for root, dirs, files in os.walk(template_path):
         for fn in files:
             if fn.startswith('.'):
@@ -392,5 +392,5 @@ for dp, dnames, fnames in os.walk(args.www_dir, topdown=True):
         os.symlink(src, dest)
 
 render_grid(args)
-call_per_region(args.data_dir, functools.partial(render_timeseries, args))
-call_per_region(args.data_dir, functools.partial(render_templates, args))
+call_per_region(args.data_dir, functools.partial(render_region_timeseries, args))
+call_per_region(args.data_dir, functools.partial(render_region_templates, args))
