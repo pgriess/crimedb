@@ -9,10 +9,11 @@ optDownload=
 optProcess=
 optPush=
 optRender=
+optRegions=
 
 usage() {
     cat >&2 <<EOF
-usage: $EXEC [options]
+usage: $EXEC [options] <regions>
 
 Update CrimeDB, running whatever phases are requested. By default, nothing is
 done.
@@ -56,12 +57,18 @@ while getopts 'dochpr' OPTNAME ; do
     esac
 done
 
+shift $(($OPTIND - 1))
+for region_name in $@ ; do
+    optRegions="$optRegions --region $region_name"
+done
+
 if [[ -n "$optDownload" ]] ; then
     printf "[%s] Beginning download\n" "$(date)"
     $CRIMEDB_ROOT/bin/crawl -vvvv \
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
         --config=$HOME/.crimedb/crawl_config \
+        $optRegions \
         download
     printf "[%s] Finished download\n" "$(date)"
 fi
@@ -71,7 +78,8 @@ if [[ -n "$optProcess" ]] ; then
     $CRIMEDB_ROOT/bin/crawl -vvvv \
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
-        --config=$HOME/.crimedb/crawl_process_config
+        --config=$HOME/.crimedb/crawl_process_config \
+        $optRegions \
         process
     printf "[%s] Finished process\n" "$(date)"
 fi
@@ -82,6 +90,7 @@ if [[ -n "$optCollate" ]] ; then
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
         --config=$HOME/.crimedb/crawl_config \
+        $optRegions \
         collate
     printf "[%s] Finished collate\n" "$(date)"
 fi
