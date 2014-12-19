@@ -70,6 +70,9 @@ class Region(crimedb.regions.base.Region):
     def __init__(self, *args, **kwargs):
         super(Region, self).__init__('stlco', *args, **kwargs)
 
+        self.human_name = 'St. Louis County, MO'
+        self.human_url = 'http://www.stlouisco.com/LawandPublicSafety/PoliceDepartment'
+
     def download(self):
         # Get the list of GlobalIDs that we've already seen
         gids = set()

@@ -108,7 +108,11 @@ def grid_for_region(args, region, region_dir, zoom):
             return True
 
         with open(fp, 'rt') as cf:
-            crimes += [c for c in json.load(cf)['crimes'] if crime_filter(c)]
+            all_crimes = json.load(cf)['crimes']
+            filtered_crimes = [c for c in all_crimes if crime_filter(c)]
+            logging.debug('grid_for_region: {} of {} crimes from {} matched time range'.format(
+                len(filtered_crimes), len(all_crimes), fp))
+            crimes += filtered_crimes
 
     grid = crimedb.www.grid_from_crimes(crimes, zoom)
 
@@ -148,9 +152,8 @@ def render_grid(args):
 
         logging.info('Reading raw data for {}'.format(rn))
         region = CRIME_REGIONS[rn]()
-        grid = crimedb.www.grid_add(
-                grid,
-                grid_for_region(args, region, rp, initial_zoom_level))
+        region_grid = grid_for_region(args, region, rp, initial_zoom_level)
+        grid = crimedb.www.grid_add(grid, region_grid)
 
     zgrid = crimedb.www.zgrid_from_grid(grid, initial_zoom_level, 0)
     rzgrid = crimedb.www.rzgrid_from_zgrid(zgrid, GRID_CELL_ZOOM_DEPTH)
@@ -164,6 +167,59 @@ def render_grid(args):
                 gjo = crimedb.www.rzgrid_to_geojson(rzgrid, x, y, z, GRID_CELL_ZOOM_DEPTH)
                 with open(os.path.join(dp, '{}.json'.format(y)), 'wt', encoding='utf-8') as of:
                     json.dump(gjo, of)
+
+
+def render_global_templates(args):
+    '''
+    Render files from the _templates/ directory (but ommitting the r/
+    subdirectory).
+    '''
+
+    # Create our pystache context object
+    regions = []
+    for rn in os.listdir(args.data_dir):
+        if rn.startswith('.'):
+            continue
+
+        if not os.path.isdir(os.path.join(args.data_dir, rn)):
+            continue
+
+
+        region = CRIME_REGIONS[rn]()
+
+        regions += [{
+            'name': region.name,
+            'human_name': region.human_name,
+            'human_url': region.human_url,
+        }]
+
+    context = {
+        'regions': regions
+    }
+
+    # Walk the template directory rendering any template files to the
+    # destination
+    template_path = os.path.join(args.www_dir, '_templates')
+    for root, dirs, files in os.walk(template_path):
+        if root == template_path:
+            del dirs[dirs.index('_r')]
+
+        for fn in files:
+            if fn.startswith('.'):
+                continue
+
+            sp = os.path.join(root, fn)
+            logging.debug('loading template {}'.format(sp))
+            with open(sp, 'rt', encoding='utf-8') as sf:
+                source_data = sf.read()
+
+            rp = os.path.relpath(sp, template_path)
+            dp = os.path.join(args.output_dir, rp)
+            if not os.path.isdir(os.path.dirname(dp)):
+                os.makedirs(os.path.dirname(dp))
+
+            with open(dp, 'wt', encoding='utf-8') as df:
+                df.write(pystache.render(source_data, context))
 
 
 def render_region_timeseries(args, region_name, region_path, **kwargs):
@@ -189,7 +245,7 @@ def render_region_timeseries(args, region_name, region_path, **kwargs):
             filtered_crimes = [c for c in all_crimes if crime_filter(c)]
             crimes += filtered_crimes
 
-            logging.info('{} of {} crimes from {} matched time range'.format(
+            logging.debug('render_region_timeseries: {} of {} crimes from {} matched time range'.format(
                 len(filtered_crimes), len(all_crimes), fp))
 
     crimes_by_month = defaultdict(lambda: [0] * 12)
@@ -293,7 +349,7 @@ def render_region_templates(args, region_name, region_path, **kwargs):
 
     # Walk the template directory rendering any template files to the
     # destination
-    template_path = os.path.join(args.www_dir, '_templates', 'r')
+    template_path = os.path.join(args.www_dir, '_templates', '_r')
     for root, dirs, files in os.walk(template_path):
         for fn in files:
             if fn.startswith('.'):
@@ -392,5 +448,6 @@ for dp, dnames, fnames in os.walk(args.www_dir, topdown=True):
         os.symlink(src, dest)
 
 render_grid(args)
+render_global_templates(args)
 call_per_region(args.data_dir, functools.partial(render_region_timeseries, args))
 call_per_region(args.data_dir, functools.partial(render_region_templates, args))

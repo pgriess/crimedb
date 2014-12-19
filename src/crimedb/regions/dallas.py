@@ -46,6 +46,9 @@ class Region(crimedb.regions.base.Region):
     def __init__(self, *args, **kwargs):
         super(Region, self).__init__('dallas', *args, **kwargs)
 
+        self.human_name = 'Dallas, TX'
+        self.human_url = 'http://www.dallaspolice.net/'
+
     def download(self):
         # Get the list of IDs that we've already seen
         gids = set()

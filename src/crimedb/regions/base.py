@@ -42,6 +42,9 @@ class Region(object):
                 shape = shapely.geometry.shape(json.load(tf))
         self.shape = shape
 
+        self.human_name = None
+        self.human_url = None
+
     def download(self):
         '''
         Download any new crime incidents.

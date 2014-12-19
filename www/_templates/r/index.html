@@ -14,11 +14,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-    <head>
-        <title>CrimeDB - {{name}}</title>
 
-        <link rel="stylesheet" href="/css/leaflet.css" />
-        <script type="text/javascript" data-main="main.js" src="/js/require.js"></script>
+    <head>
+        <title>CrimeDB - Regions</title>
+
+        <script type="text/javascript" data-main="/js/stub-ga.js" src="/js/require.js"></script>
 
         <style type="text/css">
             body {
@@ -26,60 +26,33 @@
                 margin-left: 10%;
                 margin-right: 10%;
             }
-
-            #map {
-                height: 90%;
-                width: 100%;
-                border: 2px solid grey;
-                clear: both;
-            }
-
-            #timeseries {
-                height: 50%;
-                width: 40%;
-                border: 2px solid grey;
-                clear: both;
-            }
         </style>
     </head>
 
     <body>
-        <div>
-            <div>
-                <span style="float: right; margin-bottom: 10px;">
-                    <a href="#help">Help</a> |
-                    <a href="#about">About</a>
-                </span>
-            </div>
-            <div id="map"></div>
-        </div>
+        <center><h1>CrimeDB - Regions</h1></center>
 
-        <h3 id="help">Help</h3>
         <p>
-        This map shows crime frequency in {{name}} {{timeslice}}.
+            CrimeDB collects incident data from regions all across the country.
         </p>
 
         <p>
-        Each square on the grid is colored according to how many crimes were
-        reported to have occurred there. Grid cells with no color at all (i.e.
-        black and white) are outside of the region for which data is collected.
-        This means that there is a difference between cells that are known to
-        have had no crimes and those for which we have no information. The
-        legend in the bottom right of the map can be used to interpret these
-        colors.
-        </p>
-
-        <div id="timeseries-by-month"></div>
-
-        <h3 id="about">About</h3>
-        <p>
-        Data on crimes from the <a href="{{source}}">{{name}}
-        Police Department</a>, and retrieved using the <a href="/">CrimeDB</a> API.
+            The map of all crime inidents on the home page is but a small part
+            of the information that is collected. Each region from which we
+            collect data has a more in-depth view of the crime happening in the
+            area, as well as internal data about the CrimeDB collection
+            process.
         </p>
 
         <p>
-        Please send questions or comments to
-        <a href="mailto:info@crimedb.org">info@crimedb.org</a>.
+            Check out details for the individual regions below.
         </p>
+
+        <ul>
+        {{#regions}}
+            <li><a href="{{name}}/">{{human_name}}</a></li>
+        {{/regions}}
+        </ul>
+
     </body>
 </html>

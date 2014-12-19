@@ -51,6 +51,9 @@ class Region(crimedb.regions.base.Region):
     def __init__(self, *args, **kwargs):
         super(Region, self).__init__('stl', *args, **kwargs)
 
+        self.human_name = 'St. Louis City, MO'
+        self.human_url = 'http://www.slmpd.org/'
+
     def download(self):
         self._download_raw_files()
 
