@@ -4,7 +4,9 @@
 
 CRIMEDB_ROOT=$(dirname $0)/..
 
-optCrawl=
+optCollate=
+optDownload=
+optProcess=
 optPush=
 optRender=
 
@@ -16,22 +18,32 @@ Update CrimeDB, running whatever phases are requested. By default, nothing is
 done.
 
 Options:
-  -c                crawl
+  -c                collate
+  -d                download
   -h                show help
+  -o                process
   -p                push
   -r                render
 EOF
 }
 
-while getopts 'chpr' OPTNAME ; do
+while getopts 'dochpr' OPTNAME ; do
     case $OPTNAME in
         c)
-            optCrawl=1
+            optCollate=1
+            ;;
+
+        d)
+            optDownload=1
             ;;
 
         h)
             usage
             exit 0
+            ;;
+
+        o)
+            optProcess=1
             ;;
 
         p)
@@ -44,30 +56,34 @@ while getopts 'chpr' OPTNAME ; do
     esac
 done
 
-if [[ -n "$optCrawl" ]] ; then
-    printf "[%s] Beginning crawl download\n" "$(date)"
+if [[ -n "$optDownload" ]] ; then
+    printf "[%s] Beginning download\n" "$(date)"
     $CRIMEDB_ROOT/bin/crawl -vvvv \
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
         --config=$HOME/.crimedb/crawl_config \
         download
-    printf "[%s] Finished crawl download\n" "$(date)"
+    printf "[%s] Finished download\n" "$(date)"
+fi
 
-    printf "[%s] Beginning crawl process\n" "$(date)"
+if [[ -n "$optProcess" ]] ; then
+    printf "[%s] Beginning process\n" "$(date)"
     $CRIMEDB_ROOT/bin/crawl -vvvv \
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
-        --config=$HOME/.crimedb/crawl_process_config \
+        --config=$HOME/.crimedb/crawl_process_config
         process
-    printf "[%s] Finished crawl process\n" "$(date)"
+    printf "[%s] Finished process\n" "$(date)"
+fi
 
-    printf "[%s] Beginning crawl collate\n" "$(date)"
+if [[ -n "$optCollate" ]] ; then
+    printf "[%s] Beginning collate\n" "$(date)"
     $CRIMEDB_ROOT/bin/crawl -vvvv \
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
         --config=$HOME/.crimedb/crawl_config \
         collate
-    printf "[%s] Finished crawl collate\n" "$(date)"
+    printf "[%s] Finished collate\n" "$(date)"
 fi
 
 if [[ -n "$optRender" ]] ; then

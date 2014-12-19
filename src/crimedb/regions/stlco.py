@@ -38,6 +38,7 @@ http://maps.stlouisco.com/police.
 '''
 
 import crimedb.core
+import crimedb.regions.base
 import datetime
 import io
 import json
@@ -50,137 +51,106 @@ import urllib.parse
 import urllib.request
 
 
-__QUERY_URL = ('http://maps.stlouisco.com/arcgis/rest/services/'
+_QUERY_URL = ('http://maps.stlouisco.com/arcgis/rest/services/'
                'Police/AGS_Crimes/MapServer/0/query')
 
-__TZ = pytz.timezone('US/Central')
+_TZ = pytz.timezone('US/Central')
 
-__LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 # XXX: We should really get this from the 'spatialReference'
 #      'latestWkid' field in the results object. Unfortunately
 #      the current fetching/caching strategy doesn't really
 #      accommodate this very well. Probably worth re-visiting.
-__PROJ = pyproj.Proj(init='epsg:3857')
+_PROJ = pyproj.Proj(init='epsg:3857')
 
 
-def __cache_dir(work_dir):
-    cache_dir = os.path.join(work_dir, 'raw')
-    os.makedirs(cache_dir, exist_ok=True)
+class Region(crimedb.regions.base.Region):
 
-    return cache_dir
+    def __init__(self, *args, **kwargs):
+        super(Region, self).__init__('stlco', *args, **kwargs)
 
+    def download(self):
+        # Get the list of GlobalIDs that we've already seen
+        gids = set()
+        if os.path.exists(self._incidents_path()):
+            with open(self._incidents_path(), 'rt', encoding='utf-8') as f:
+                for l in f:
+                    incident = json.loads(l)
+                    gids.add(incident['attributes']['GlobalID'])
 
-def __intermediate_dir(work_dir):
-    int_dir = os.path.join(work_dir, 'intermediate')
-    os.makedirs(int_dir, exist_ok=True)
-
-    return int_dir
-
-
-def __download(work_dir):
-    cache_dir = __cache_dir(work_dir)
-
-    # Get the list of GlobalIDs that we've already seen
-    gids = set()
-    incidents_path = os.path.join(cache_dir, 'incidents')
-    if os.path.exists(incidents_path):
-        with open(incidents_path, 'rt', encoding='utf-8') as f:
-            for l in f:
-                incident = json.loads(l)
-                gids.add(incident['attributes']['GlobalID'])
-
-    # Page through the list of incidents, saving any of those that
-    # we haven't already seen
-    query_params = {
+        # Page through the list of incidents, saving any of those that
+        # we haven't already seen
+        query_params = {
             'f': 'json',
             'returnGeometry': 'true',
             'outFields': '*',
             'outSR': '102100',
             'orderByFields': 'GlobalID',
-    }
+        }
 
-    last_gid = '{00000000-0000-0000-0000-000000000000}'
-    while True:
-        __LOGGER.debug('fetching GlobalIDs > {}'.format(last_gid))
-        query_params['where'] = "GlobalID>'{}'".format(last_gid)
-        url = '{}?{}'.format(__QUERY_URL, urllib.parse.urlencode(query_params))
-        ro = json.load(io.TextIOWrapper(urllib.request.urlopen(url),
-                                        encoding='utf-8',
-                                        errors='replace'))
+        last_gid = '{00000000-0000-0000-0000-000000000000}'
+        while True:
+            _LOGGER.debug('fetching GlobalIDs > {}'.format(last_gid))
+            query_params['where'] = "GlobalID>'{}'".format(last_gid)
+            url = '{}?{}'.format(_QUERY_URL, urllib.parse.urlencode(query_params))
+            ro = json.load(io.TextIOWrapper(urllib.request.urlopen(url),
+                                            encoding='utf-8',
+                                            errors='replace'))
 
-        __LOGGER.debug('got {} features'.format(len(ro['features'])))
+            _LOGGER.debug('got {} features'.format(len(ro['features'])))
 
-        # No records with a larger GlobalID; we're done
-        if not ro['features']:
-            break
+            # No records with a larger GlobalID; we're done
+            if not ro['features']:
+                break
 
-        with open(incidents_path, 'at', encoding='utf-8') as f:
-            for feature in ro['features']:
-                last_gid = feature['attributes']['GlobalID']
-                if last_gid in gids:
-                    continue
+            with open(self._incidents_path(), 'at', encoding='utf-8') as f:
+                for feature in ro['features']:
+                    last_gid = feature['attributes']['GlobalID']
+                    if last_gid in gids:
+                        continue
 
-                f.write(json.dumps(feature) + '\n')
+                    f.write(json.dumps(feature) + '\n')
 
+    def process(self, geocoder):
+        if not os.path.exists(self._incidents_path()):
+            return
 
-def download(work_dir, **kwargs):
-    '''
-    Download any missing data.
-    '''
+        with open(self._incidents_path(), 'rt', encoding='utf-8') as f:
+            for l in f:
+                fo = json.loads(l)
 
-    __download(work_dir)
+                attrs = fo['attributes']
+                geom = fo['geometry']
 
+                loc = _PROJ(geom['x'], geom['y'], inverse=True, errcheck=True)
+                point = shapely.geometry.Point(*loc)
+                if self.shape and not self.shape.contains(point):
+                    _LOGGER.debug(
+                            ('crime {cid} at ({lon}, {lat}) is outside of our'
+                             'shape; stripping location').format(
+                                 cid=attrs['GlobalID'], lon=loc[0], lat=loc[1]))
+                    loc = None
 
-def process(work_dir, geocoder=crimedb.geocoding.geocode_null, region=None,
-            **kwargs):
-    '''
-    Process downloaded files.
-    '''
+                date = datetime.datetime.fromtimestamp(attrs['Date'] / 1000, _TZ)
 
-    incidents_path = os.path.join(__cache_dir(work_dir), 'incidents')
-    if not os.path.exists(incidents_path):
-        return
+                c = crimedb.core.Crime(attrs['Offense'], date, loc)
 
-    with open(incidents_path, 'rt', encoding='utf-8') as f:
-        for l in f:
-            fo = json.loads(l)
+                int_fp = os.path.join(
+                        self._intermediate_dir(),
+                        datetime.datetime.strftime(date, '%y-%m'))
 
-            attrs = fo['attributes']
-            geom = fo['geometry']
+                with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
+                    f.write(json.dumps(crimedb.core.crime2json_obj(c)))
+                    f.write('\n')
 
-            loc = __PROJ(geom['x'], geom['y'], inverse=True, errcheck=True)
-            point = shapely.geometry.Point(*loc)
-            if region and not region.contains(point):
-                __LOGGER.debug(
-                        ('crime {cid} at ({lon}, {lat}) is outside of our'
-                         'region; stripping location').format(
-                             cid=attrs['GlobalID'], lon=loc[0], lat=loc[1]))
-                loc = None
+    def crimes(self):
+        for file_name in os.listdir(self._intermediate_dir()):
+            fp = os.path.join(self._intermediate_dir(), file_name)
+            with open(fp, 'rt', encoding='utf-8', errors='replace') as rf:
+                for l in rf:
+                    yield crimedb.core.json_obj2crime(
+                            json.loads(l.strip()))
 
-            date = datetime.datetime.fromtimestamp(attrs['Date'] / 1000, __TZ)
-
-            c = crimedb.core.Crime(attrs['Offense'], date, loc)
-
-            int_fp = os.path.join(
-                    __intermediate_dir(work_dir),
-                    datetime.datetime.strftime(date, '%y-%m'))
-
-            with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
-                f.write(json.dumps(crimedb.core.crime2json_obj(c)))
-                f.write('\n')
-
-
-def crimes(work_dir, download=True, **kwargs):
-    '''
-    Iterator which yields Crime objects.
-    '''
-
-    int_dir = __intermediate_dir(work_dir)
-
-    for file_name in os.listdir(int_dir):
-        fp = os.path.join(int_dir, file_name)
-        with open(fp, 'rt', encoding='utf-8', errors='replace') as rf:
-            for l in rf:
-                yield crimedb.core.json_obj2crime(
-                        json.loads(l.strip()))
+    def _incidents_path(self):
+        return os.path.join(self._cache_dir(), 'incidents')

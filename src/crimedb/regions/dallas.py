@@ -17,6 +17,7 @@ Process crime data from Dallas, TX Police Department.
 '''
 
 import crimedb.core
+import crimedb.regions.base
 import crimedb.socrata
 import datetime
 import json
@@ -27,104 +28,80 @@ import pyproj
 import pytz
 
 
-__SOCRATA_HOSTNAME = 'www.dallasopendata.com'
+_SOCRATA_HOSTNAME = 'www.dallasopendata.com'
 
-__SOCRATA_DATASET = 'tbnj-w5hb'
+_SOCRATA_DATASET = 'tbnj-w5hb'
 
-__LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
-__TZ = pytz.timezone('US/Central')
+_TZ = pytz.timezone('US/Central')
 
 # Guessed that PointX, PointY are in SPCS/NAD83. This appears correct based on
 # spot-checking a few locations with their geocoded addresses.
-__PROJ = pyproj.Proj(init='nad83:4202', units='us-ft', preserve_units=True)
+_PROJ = pyproj.Proj(init='nad83:4202', units='us-ft', preserve_units=True)
 
 
-def __cache_dir(work_dir):
-    cache_dir = os.path.join(work_dir, 'raw')
-    os.makedirs(cache_dir, exist_ok=True)
+class Region(crimedb.regions.base.Region):
 
-    return cache_dir
+    def __init__(self, *args, **kwargs):
+        super(Region, self).__init__('dallas', *args, **kwargs)
 
+    def download(self):
+        # Get the list of IDs that we've already seen
+        gids = set()
+        if os.path.exists(self._incidents_path()):
+            with open(self._incidents_path(), 'rt', encoding='utf-8') as f:
+                for l in f:
+                    incident = json.loads(l)
+                    gids.add(incident['servicenum'])
 
-def __intermediate_dir(work_dir):
-    int_dir = os.path.join(work_dir, 'intermediate')
-    os.makedirs(int_dir, exist_ok=True)
+        # Write our all new incidents that don't already appear in the file
+        with open(self._incidents_path(), 'at', encoding='utf-8') as f:
+            for cr in crimedb.socrata.dataset_rows(
+                    _SOCRATA_HOSTNAME, _SOCRATA_DATASET):
+                if cr['servicenum'] in gids:
+                    continue
 
-    return int_dir
+                f.write(json.dumps(cr) + '\n')
 
+    def process(self, geocoder):
+        if not os.path.exists(self._incidents_path()):
+            return
 
-def download(work_dir, **kwargs):
-    '''
-    Download any missing data.
-    '''
+        with open(self._incidents_path(), 'rt', encoding='utf-8') as f:
+            for cr in map(json.loads, f):
+                date = None
+                if 'startdatetime' in cr:
+                    date = crimedb.socrata.floating_timestamp_to_datetime(
+                            cr['startdatetime'], _TZ)
 
-    # Get the list of IDs that we've already seen
-    gids = set()
-    incidents_path = os.path.join(__cache_dir(work_dir), 'incidents')
-    if os.path.exists(incidents_path):
-        with open(incidents_path, 'rt', encoding='utf-8') as f:
-            for l in f:
-                incident = json.loads(l)
-                gids.add(incident['servicenum'])
+                loc = None
+                if 'pointx' in cr and 'pointy' in cr:
+                    loc = _PROJ(float(cr['pointx']),
+                            float(cr['pointy']),
+                            inverse=True,
+                            errcheck=True)
 
-    # Write our all new incidents that don't already appear in the file
-    with open(incidents_path, 'at', encoding='utf-8') as f:
-        for cr in crimedb.socrata.dataset_rows(
-                __SOCRATA_HOSTNAME, __SOCRATA_DATASET):
-            if cr['servicenum'] in gids:
-                continue
+                c = crimedb.core.Crime(cr['offincident'], date, loc)
 
-            f.write(json.dumps(cr) + '\n')
+                int_fp = os.path.join(self._intermediate_dir(), 'UNKNOWN')
+                if date:
+                    int_fp = os.path.join(
+                            self._intermediate_dir(),
+                            datetime.datetime.strftime(date, '%y-%m'))
 
-
-def process(work_dir, geocoder=crimedb.geocoding.geocode_null, region=None,
-            **kwargs):
-    '''
-    Process downloaded files.
-    '''
-
-    incidents_path = os.path.join(__cache_dir(work_dir), 'incidents')
-    if not os.path.exists(incidents_path):
-        return
-
-    with open(incidents_path, 'rt', encoding='utf-8') as f:
-        for cr in map(json.loads, f):
-            date = None
-            if 'startdatetime' in cr:
-                date = crimedb.socrata.floating_timestamp_to_datetime(
-                        cr['startdatetime'], __TZ)
-
-            loc = None
-            if 'pointx' in cr and 'pointy' in cr:
-                loc = __PROJ(float(cr['pointx']),
-                        float(cr['pointy']),
-                        inverse=True,
-                        errcheck=True)
-
-            c = crimedb.core.Crime(cr['offincident'], date, loc)
-
-            int_fp = os.path.join(__intermediate_dir(work_dir), 'UNKNOWN')
-            if date:
-                int_fp = os.path.join(
-                        __intermediate_dir(work_dir),
-                        datetime.datetime.strftime(date, '%y-%m'))
-
-            with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
-                f.write(json.dumps(crimedb.core.crime2json_obj(c)))
-                f.write('\n')
+                with open(int_fp, 'at', encoding='utf-8', errors='replace') as f:
+                    f.write(json.dumps(crimedb.core.crime2json_obj(c)))
+                    f.write('\n')
 
 
-def crimes(work_dir, download=True, **kwargs):
-    '''
-    Iterator which yields Crime objects.
-    '''
+    def crimes(self):
+        for file_name in os.listdir(self._intermediate_dir()):
+            fp = os.path.join(self._intermediate_dir(), file_name)
+            with open(fp, 'rt', encoding='utf-8', errors='replace') as rf:
+                for l in rf:
+                    yield crimedb.core.json_obj2crime(
+                            json.loads(l.strip()))
 
-    int_dir = __intermediate_dir(work_dir)
-
-    for file_name in os.listdir(int_dir):
-        fp = os.path.join(int_dir, file_name)
-        with open(fp, 'rt', encoding='utf-8', errors='replace') as rf:
-            for l in rf:
-                yield crimedb.core.json_obj2crime(
-                        json.loads(l.strip()))
+    def _incidents_path(self):
+        return os.path.join(self._cache_dir(), 'incidents')

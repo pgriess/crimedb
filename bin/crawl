@@ -52,58 +52,43 @@ NOW = UTC_TZ.localize(
         datetime.datetime.fromtimestamp(
                 time.mktime(time.gmtime())))
 
-CRIME_MODULES = {
-    'dallas': crimedb.regions.dallas,
-    'stl': crimedb.regions.stl,
-    'stlco': crimedb.regions.stlco,
+CRIME_REGIONS = {
+    'dallas': crimedb.regions.dallas.Region,
+    'stl': crimedb.regions.stl.Region,
+    'stlco': crimedb.regions.stlco.Region,
 }
 
 
-def cmd_download(args):
-    for region_name in args.region_names:
+def cmd_download(args, regions):
+    for region_name, region in regions.items():
         logging.info('downloading from region {}'.format(region_name))
-
-        work_dir = os.path.join(args.work_dir, region_name)
-        CRIME_MODULES[region_name].download(work_dir)
+        region.download()
 
 
-def cmd_process(args):
-    geocoder = crimedb.geocoding.geocode_null
-    if args.mapquest_api_key:
-        geocoder = functools.partial(
-                crimedb.geocoding.geocode_mapquest,
-                args.mapquest_api_key,
-                region=region)
-
-    for region_name in args.region_names:
+def cmd_process(args, regions):
+    for region_name, region in regions.items():
         logging.info('processing data from region {}'.format(region_name))
 
-        work_dir = os.path.join(args.work_dir, region_name)
-        data_dir = os.path.join(args.data_dir, region_name)
+        geocoder = crimedb.geocoding.geocode_null
+        if args.mapquest_api_key:
+            geocoder = functools.partial(
+                    crimedb.geocoding.geocode_mapquest,
+                    args.mapquest_api_key,
+                    region=region.shape)
 
-        meta_path = os.path.join(data_dir, 'index.json')
-        with open(meta_path, 'rt') as mf:
-            meta_obj = json.load(mf)
-
-        region = shapely.geometry.shape(meta_obj['geo'])
-
-        CRIME_MODULES[region_name].process(
-                work_dir, geocoder=geocoder, region=region)
+        region.process(geocoder=geocoder)
 
 
-def cmd_collate(args):
-    for region_name in args.region_names:
+def cmd_collate(args, regions):
+    for region_name, region in regions.items():
         logging.info('collating data from region {}'.format(region_name))
-
-        work_dir = os.path.join(args.work_dir, region_name)
-        data_dir = os.path.join(args.data_dir, region_name)
 
         meta_path = os.path.join(data_dir, 'index.json')
         with open(meta_path, 'rt') as mf:
             meta_obj = json.load(mf)
 
         crimes_by_month_filenames = defaultdict(list)
-        for c in CRIME_MODULES[region_name].crimes(work_dir):
+        for c in region.crimes():
             if not c.time:
                 continue
 
@@ -198,14 +183,15 @@ crimedb.cli.process_config_args(args, defaults={
 })
 
 if not args.region_names:
-    args.region_names = CRIME_MODULES.keys()
+    args.region_names = CRIME_REGIONS.keys()
 else:
     for region_name in args.region_names:
-        if region_name not in CRIME_MODULES:
+        if region_name not in CRIME_REGIONS:
             print('invalid region: {}'.format(region_name), file=sys.stderr)
             sys.exit(1)
 
-# Make sure all directories have been created
+# Convert region names into Region objects
+regions = {}
 for region_name in args.region_names:
     work_dir = os.path.join(args.work_dir, region_name)
     if not os.path.isdir(work_dir):
@@ -215,7 +201,15 @@ for region_name in args.region_names:
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
 
+    shape = None
+    mp = os.path.join(data_dir, 'index.json')
+    if os.path.isfile(mp):
+        with open(mp, 'rt', encoding='utf-8') as mf:
+            shape = shapely.geometry.shape(json.load(mf)['geo'])
+
+    regions[region_name] = CRIME_REGIONS[region_name](work_dir, shape)
+
 if 'func' not in args:
     ap.error('command name required')
 
-args.func(args)
+args.func(args, regions)
