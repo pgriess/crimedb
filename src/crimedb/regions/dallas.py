@@ -26,6 +26,7 @@ import os
 import os.path
 import pyproj
 import pytz
+import shapely.geometry
 
 
 _SOCRATA_HOSTNAME = 'www.dallasopendata.com'
@@ -84,6 +85,15 @@ class Region(crimedb.regions.base.Region):
                             float(cr['pointy']),
                             inverse=True,
                             errcheck=True)
+
+                if loc:
+                    point = shapely.geometry.Point(*loc)
+                    if self.shape and not self.shape.contains(point):
+                        _LOGGER.debug(
+                                ('crime at ({lon}, {lat}) is outside of our'
+                                 'shape; stripping location').format(
+                                     lon=loc[0], lat=loc[1]))
+                        loc = None
 
                 c = crimedb.core.Crime(cr['offincident'], date, loc)
 
