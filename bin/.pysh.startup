@@ -22,7 +22,7 @@ logging.basicConfig(
         format='{asctime} {levelname} [{name}]: {message}')
 
 # TODO: Allow configuring individual loggers instead of just the root
-if 'PYSH_LOG' in os.environ:
-    logging.getLogger().setLevel(os.environ['PYSH_LOG'])
+if 'LOGGING_LEVEL' in os.environ:
+    logging.getLogger().setLevel(os.environ['LOGGING_LEVEL'])
 
 # vim:filetype=python
