@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/bin/env python3.3
 #
 # Copyright 2014 Peter Griess
 #
@@ -14,7 +14,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Run Python unittests.
+# Run CrimeDB unit tests.
+#
+# This is a bit more than a simple invocation of unittest.main(), as we need to
+# set up the PYTHONPATH and configure logging so that tests can be more easily
+# debugged.
 
-export PYTHONPATH=$(dirname $0)/../src
-exec python3.3 -m unittest discover -s $(dirname $0)/../src -p '*.*' $@
+import logging
+import os
+import sys
+import unittest
+
+CRIMEDB_SRC_PATH = os.path.join(os.path.dirname(sys.argv[0]), '..', 'src')
+
+# Add src/ directory to PYTHONPATH so that this can be run without the operator
+# having to configure that manually
+sys.path += [CRIMEDB_SRC_PATH]
+
+# Set up logging
+verbosity = int(os.environ.get('LOGGING_LEVEL', 0))
+logging.basicConfig(
+        level=logging.ERROR - verbosity * 10,
+        style='{',
+        format='{asctime} {levelname} [{name}]: {message}')
+
+# Run the normal unittest.main() with appropriate discover args
+#
+# Eventually maybe it makes sense to parse our own arguments, but
+# unittest.main() has a decent amount of functionality and until we need
+# something significant, there's no real reason to duplicate it.
+argv = sys.argv[0:1] + \
+        ['discover', '-p', '*.*', '-s', CRIMEDB_SRC_PATH] + \
+        sys.argv[1:]
+unittest.main(argv=argv)
