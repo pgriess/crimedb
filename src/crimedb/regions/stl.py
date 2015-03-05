@@ -17,6 +17,7 @@ Process crime data from the St. Louis Police Department at
 http://www.slmpd.org/Crimereports.shtml.
 '''
 
+import contextlib
 import csv
 import crimedb.core
 import crimedb.geocoding
@@ -88,7 +89,8 @@ class Region(crimedb.regions.base.Region):
                     continue
 
                 with open(file_path, 'wb') as rf:
-                    rf.write(file_fetch().read())
+                    with contextlib.closing(file_fetch()) as f:
+                        rf.write(f.read())
 
     def _toc_global_form_fields(self, et):
         '''
@@ -114,9 +116,9 @@ class Region(crimedb.regions.base.Region):
         form_data = None
 
         while True:
-            r = urllib.request.urlopen(_BASE_URL, data=form_data)
-            body = r.read()
-            yield io.BytesIO(body)
+            with contextlib.closing(urllib.request.urlopen(_BASE_URL, data=form_data)) as r:
+                body = r.read()
+                yield io.BytesIO(body)
 
             et = lxml.etree.parse(io.BytesIO(body), lxml.etree.HTMLParser())
             form_fields = self._toc_global_form_fields(et)
