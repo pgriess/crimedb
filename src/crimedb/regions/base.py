@@ -16,6 +16,7 @@
 Base class for region implementations.
 '''
 
+import crimedb.geocoding
 import io
 import json
 import os
@@ -32,15 +33,19 @@ class Region(object):
     other code.
     '''
 
-    def __init__(self, name, work_dir=None, shape=None):
+    def __init__(self, name, work_dir=None, shape=None, geocoder=None):
         self.name = name
         self.work_dir = work_dir
 
-        if not shape:
+        if shape is None:
             with pkg_resources.resource_stream(__name__, '{}.geojson'.format(name)) as f:
                 tf = io.TextIOWrapper(f, encoding='utf-8', errors='replace')
                 shape = shapely.geometry.shape(json.load(tf))
         self.shape = shape
+
+        if geocoder is None:
+            geocoder = crimedb.geocoding.geocode_null
+        self.geocoder = geocoder
 
         self.human_name = None
         self.human_url = None
@@ -56,7 +61,7 @@ class Region(object):
 
         pass
 
-    def process(self, geocoder):
+    def process(self):
         '''
         Process any already-downloaded incidents.
 

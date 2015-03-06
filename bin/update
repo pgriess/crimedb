@@ -78,7 +78,7 @@ if [[ -n "$optProcess" ]] ; then
     $CRIMEDB_ROOT/bin/crawl -vvvv \
         --data-dir=$CRIMEDB_ROOT/root/data \
         --work-dir=$CRIMEDB_ROOT/work \
-        --config=$HOME/.crimedb/crawl_process_config \
+        --config=$HOME/.crimedb/crawl_config \
         $optRegions \
         process
     printf "[%s] Finished process\n" "$(date)"

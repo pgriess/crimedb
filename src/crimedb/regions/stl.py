@@ -58,12 +58,10 @@ class Region(crimedb.regions.base.Region):
     def download(self):
         self._download_raw_files()
 
-    def process(self, geocoder):
+    def process(self):
         for fn in os.listdir(self._cache_dir()):
 
-            self._process_raw_file(
-                    os.path.join(self._cache_dir(), fn),
-                    geocoder)
+            self._process_raw_file(os.path.join(self._cache_dir(), fn))
 
     def crimes(self):
         int_dir = self._intermediate_dir()
@@ -171,7 +169,7 @@ class Region(crimedb.regions.base.Region):
 
             yield fa.text, download_file
 
-    def _process_raw_file(self, file_path, geocoder):
+    def _process_raw_file(self, file_path):
         '''
         Process the given raw file and update intermediate files in the work
         directory.
@@ -255,7 +253,8 @@ class Region(crimedb.regions.base.Region):
 
         for cd, loc in zip(
                 geocoding_needed,
-                geocoder(map(crime_dict_loc, geocoding_needed))):
+                self.geocoder(
+                    map(crime_dict_loc, geocoding_needed), shape=self.shape)):
             if loc:
                 loc = loc['coordinates']
                 _LOGGER.debug('resolved {addr} to ({lon}, {lat})'.format(

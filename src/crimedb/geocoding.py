@@ -60,7 +60,7 @@ def __granularity_comparator(a, b):
 
 
 # Geocode the given set of addresses.
-def __geocode_batch(key, locations, region=None):
+def __geocode_batch(key, locations, shape=None):
     def __location_comparator(a, b):
         # XXX: Take confidence into account as well?
         return __granularity_comparator(
@@ -70,14 +70,14 @@ def __geocode_batch(key, locations, region=None):
     query_params = [('key', key)]
     query_params += [('location', l) for l in locations]
 
-    if region:
+    if shape:
         query_params += [
                 ('boundingBox',
                  '{},{},{},{}'.format(
-                        region.bounds[3],
-                        region.bounds[0],
-                        region.bounds[1],
-                        region.bounds[2]))]
+                        shape.bounds[3],
+                        shape.bounds[0],
+                        shape.bounds[1],
+                        shape.bounds[2]))]
 
     url = 'http://open.mapquestapi.com/geocoding/v1/batch?' + \
         urllib.parse.urlencode(query_params)
@@ -102,14 +102,14 @@ def __geocode_batch(key, locations, region=None):
 
         locs = result['locations']
 
-        # Filter out any locations not within our region (if specified)
-        if region:
+        # Filter out any locations not within our shape (if specified)
+        if shape:
             locs = [l for l in locs if
-                    region.contains(shapely.geometry.Point(
+                    shape.contains(shapely.geometry.Point(
                         l['displayLatLng']['lng'],
                         l['displayLatLng']['lat']))]
 
-        # No locations found within our region
+        # No locations found within our shape
         if not locs:
             yield None
             continue
@@ -127,7 +127,7 @@ def __geocode_batch(key, locations, region=None):
         }
 
 
-def geocode_mapquest(key, locations, region=None, batch_size=10):
+def geocode_mapquest(key, locations, shape=None, batch_size=10, **kwargs):
     '''
     Geocode the given iterable of locations, returning an iterable of
     GeoJSON objects in the same order as the addresses requested
@@ -140,11 +140,11 @@ def geocode_mapquest(key, locations, region=None, batch_size=10):
     while True:
         loc_slice = [l for l in islice(loc_iter, batch_size)]
         if not loc_slice:
-            break
-        yield from __geocode_batch(key, loc_slice, region)
+            breae
+        yield from __geocode_batch(key, loc_slice, shape)
 
 
-def geocode_null(locations):
+def geocode_null(locations, **kwargs):
     '''
     A null geocoder that doesn't do any actual geocoding; just yields
     None for all locations.

@@ -115,7 +115,7 @@ class Region(crimedb.regions.base.Region):
 
                     f.write(json.dumps(feature) + '\n')
 
-    def process(self, geocoder):
+    def process(self):
         if not os.path.exists(self._incidents_path()):
             return
 

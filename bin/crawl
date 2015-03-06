@@ -69,14 +69,7 @@ def cmd_process(args, regions):
     for region_name, region in regions.items():
         logging.info('processing data from region {}'.format(region_name))
 
-        geocoder = crimedb.geocoding.geocode_null
-        if args.mapquest_api_key:
-            geocoder = functools.partial(
-                    crimedb.geocoding.geocode_mapquest,
-                    args.mapquest_api_key,
-                    region=region.shape)
-
-        region.process(geocoder=geocoder)
+        region.process()
 
 
 def cmd_collate(args, regions):
@@ -144,6 +137,9 @@ ap.add_argument(
 fetch data from the given region; can be specified multiple times to fetch from
 multiple specific regions (default: all regions)
 ''')
+ap.add_argument(
+        '--mapquest-api-key', metavar='<key>',
+        help='set MapQuest API key')
 sp = ap.add_subparsers()
 
 download_parser = sp.add_parser(
@@ -160,9 +156,6 @@ process_parser = sp.add_parser(
         description=''''
 Process already-downloaded raw files from each region.
 ''')
-process_parser.add_argument(
-        '--mapquest-api-key', metavar='<key>',
-        help='set MapQuest API key')
 process_parser.set_defaults(func=cmd_process)
 
 collate_parser = sp.add_parser(
@@ -190,6 +183,12 @@ else:
             print('invalid region: {}'.format(region_name), file=sys.stderr)
             sys.exit(1)
 
+geocoder = crimedb.geocoding.geocode_null
+if args.mapquest_api_key:
+    geocoder = functools.partial(
+            crimedb.geocoding.geocode_mapquest,
+            args.mapquest_api_key)
+
 # Convert region names into Region objects
 regions = {}
 for region_name in args.region_names:
@@ -201,7 +200,8 @@ for region_name in args.region_names:
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
 
-    regions[region_name] = CRIME_REGIONS[region_name](work_dir)
+    regions[region_name] = CRIME_REGIONS[region_name](
+            work_dir, geocoder=geocoder)
 
 if 'func' not in args:
     ap.error('command name required')
