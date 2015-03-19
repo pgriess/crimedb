@@ -19,5 +19,5 @@
 export PYTHONPATH=$(dirname $0)/../src
 export PYTHONSTARTUP=$(dirname $0)/.pysh.startup
 
-python3.3
+python3
 exit $?

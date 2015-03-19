@@ -1,4 +1,4 @@
-#!/bin/env python3.3
+#!/bin/env python3
 #
 # Copyright 2014 Peter Griess
 #
@@ -46,4 +46,4 @@ logging.basicConfig(
 argv = sys.argv[0:1] + \
         ['discover', '-p', '*.*', '-s', CRIMEDB_SRC_PATH] + \
         sys.argv[1:]
-unittest.main(argv=argv)
+unittest.main(argv=argv, module=None)
