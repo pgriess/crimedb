@@ -38,7 +38,9 @@ class Region(object):
         self.work_dir = work_dir
 
         if shape is None:
-            with pkg_resources.resource_stream(__name__, '{}.geojson'.format(name)) as f:
+            pkg = 'crimedb.regions.__data__'
+            rsrc = '{}.geojson'.format(name)
+            with pkg_resources.resource_stream(pkg, rsrc) as f:
                 tf = io.TextIOWrapper(f, encoding='utf-8', errors='replace')
                 shape = shapely.geometry.shape(json.load(tf))
         self.shape = shape
