@@ -22,6 +22,7 @@ import json
 import logging
 import os.path
 import shapely.geometry
+import shapely.geometry.collection
 import subprocess
 import sys
 import tempfile
@@ -46,9 +47,13 @@ def view_cmd(args):
 def transform_cmd(args):
     def diff_transform(path, so):
         with open(path, 'rt', encoding='utf-8') as f:
-            diff_so = shapely.geometry.shape(json.load(f))
+            return so.difference(shapely.geometry.shape(json.load(f)))
 
-        return so.difference(diff_so)
+    def append_transform(path, so):
+        with open(path, 'rt', encoding='utf-8') as f:
+            return shapely.geometry.collection.GeometryCollection(geoms=[
+                so,
+                shapely.geometry.shape(json.load(f))])
 
     with open(args.gj_path, 'rt', encoding='utf-8') as gjf:
         so = shapely.geometry.shape(json.load(gjf))
@@ -59,6 +64,9 @@ def transform_cmd(args):
         if args.commands[i] == '-diff':
             i += 1
             transformations += [functools.partial(diff_transform, args.commands[i])]
+        elif args.commands[i] == '-append':
+            i += 1
+            transformations += [functools.partial(append_transform, args.commands[i])]
         else:
             raise Exception('unknown command: {}'.format(args.commands[i]))
 
@@ -102,6 +110,9 @@ Possible transformations and their arguments are:
 
   -diff <path>          Subtract the GeoJSON object from the given path from the
                         current object
+  -append <path>        Append the GeoJSON oject from the given path to the current
+                        objet, producing a GeometryCollection (e.g. to plot multiple
+                        points, polygons, etc)
 ''')
 transform_parser.add_argument(
     'gj_path', metavar='<path>',
