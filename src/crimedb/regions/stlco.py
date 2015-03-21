@@ -130,7 +130,7 @@ class Region(crimedb.regions.base.Region):
                 point = shapely.geometry.Point(*loc)
                 if self.shape and not self.shape.contains(point):
                     _LOGGER.debug(
-                            ('crime {cid} at ({lon}, {lat}) is outside of our'
+                            ('crime {cid} at ({lon}, {lat}) is outside of our '
                              'shape; stripping location').format(
                                  cid=attrs['GlobalID'], lon=loc[0], lat=loc[1]))
                     loc = None
