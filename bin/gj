@@ -81,6 +81,16 @@ def transform_cmd(args):
             sort_keys=True)
 
 
+def create_point_cmd(args):
+    so = shapely.geometry.Point(args.lon, args.lat)
+    json.dump(
+            shapely.geometry.mapping(so),
+            sys.stdout,
+            ensure_ascii=False,
+            indent=4,
+            sort_keys=True)
+
+
 ap = argparse.ArgumentParser(
         description='Work with CrimeDB region files.',
         parents=[crimedb.cli.logging_argument_parser])
@@ -121,6 +131,24 @@ transform_parser.add_argument(
     'commands', nargs='*',
     help='set of transformations to apply')
 transform_parser.set_defaults(func=transform_cmd)
+
+create_parser = sp.add_parser(
+    'create',
+    help='create a GeoJSON object',
+    description='Create a GeoJSON object')
+csp = create_parser.add_subparsers()
+
+create_point_parser = csp.add_parser(
+    'point',
+    help='create a Point',
+    description='create a Point')
+create_point_parser.add_argument(
+    'lon', type=float,
+    metavar='<longitude>')
+create_point_parser.add_argument(
+    'lat', type=float,
+    metavar='<latitude>')
+create_point_parser.set_defaults(func=create_point_cmd)
 
 args = ap.parse_args()
 crimedb.cli.process_logging_args(args)
