@@ -34,8 +34,11 @@ import crimedb.cli
 import crimedb.debug
 
 def view_cmd(args):
-    with open(args.gj_path, 'rt', encoding='utf-8') as gjf:
-        gjo = json.load(gjf)
+    if args.gj_path == '-':
+        gjo = json.load(sys.stdin)
+    else:
+        with open(args.gj_path, 'rt', encoding='utf-8') as gjf:
+            gjo = json.load(gjf)
 
     crimedb.debug.view_geojson_objects(gjo)
 
@@ -80,8 +83,9 @@ view_parser = sp.add_parser(
         help='view GeoJSON objects',
         description='View GeoJSON objects in a webpage')
 view_parser.add_argument(
-        'gj_path', metavar='<file>',
-        help='path to the GeoJSON file to view')
+        'gj_path', metavar='<file>', default='-',
+        help='path to the GeoJSON file to view; use "-" for stdin (default: '
+             '%(default)s)')
 view_parser.set_defaults(func=view_cmd)
 
 transform_parser = sp.add_parser(
