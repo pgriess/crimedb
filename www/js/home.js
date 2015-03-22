@@ -25,8 +25,8 @@ requirejs.config({
 });
 
 requirejs(
-    ['leaflet', 'jquery', 'gmaps', 'ga', 'crimedb-leaflet', 'stamen-leaflet'],
-    function(L, $, gmaps, ga) {
+    ['leaflet', 'jquery', 'gmaps', 'ga', 'page', 'crimedb-leaflet', 'stamen-leaflet'],
+    function(L, $, gmaps, ga, page) {
         /*
          * This is necessary because by default LeafletJS expects icons to be
          * available relative to the JS source path. This makes sense if we're
@@ -60,9 +60,16 @@ requirejs(
                     marker = L.marker(latLng);
                     map.addLayer(marker);
 
-                    map.setView(latLng, 14);
+                    page.show('/v1/' + loc.lat() + '/' + loc.lng());
                 }
             });
+        };
+
+        /*
+         * Render the page based on the parameters from the URL.
+         */
+        var renderPage = function(map, ctx, next) {
+            map.setView([ctx.params.lat, ctx.params.lon], 14);
         };
 
         $(document).ready(function() {
@@ -74,12 +81,42 @@ requirejs(
             var map = L.map('map');
 
             map.addLayer(new L.StamenTileLayer('toner-lite'))
-                .addLayer(new L.CrimeDBLayer())
-                .setView([38.638641, -90.283651], 14);
+                .addLayer(new L.CrimeDBLayer());
+
+            /*
+             * Listen for the user navigating on the map and turn these into
+             * URL / history events.
+             *
+             * We use 'dragend' here rather than 'moveend' because the latter
+             * is triggered by *any* movement of the map (e.g.  setView()).
+             * Use of that event would cause every navigation (including by
+             * going forward / backward in history) to generate a new history
+             * frame. In addition, we explicitly tell page.show() not to
+             * dispatch because the page already reflects the state of the new
+             * location; no need to re-render it.
+             */
+            map.on('dragend', function(e) {
+                var latLng = map.getCenter();
+                page.show('/v1/' + latLng.lat + '/' + latLng.lng, undefined, false);
+            });
 
             $('#gobutton').click(function() {
                 goToAddress(map, $('#address').val());
             });
+
+            page('/v1/:lat/:lon', renderPage.bind(null, map));
+
+            // By default, go an area of St. Louis, MO that is known to have
+            // good data
+            page.redirect('', '/v1/38.638641/-90.283651');
+
+            // XXX: Need to represent zoom in our URL scheme
+            // XXX: Need to add marker placement in URL scheme
+            // XXX: Doing ^^^ w/ path parameters rather than optional query params is nasty
+            // XXX: Pull in the polyfill that page.js references since page.js
+            //      requires support of the HTML5 history api
+
+            page.start({hashbang: true});
         });
     }
 );
