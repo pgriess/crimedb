@@ -41,12 +41,16 @@ requirejs(
 
         var geocoder = new gmaps.Geocoder();
         var marker = null;
+        var ignoreZoomEvent = false;
 
         /*
          * Return a URL string for the given location.
          */
-        var getPageLocationURL = function(lat, lon) {
+        var getPageLocationURL = function(lat, lon, zoom) {
             var url = '/v1/' + lat.toFixed(4) + '/' + lon.toFixed(4);
+            if (zoom) {
+                url += '/' + zoom;
+            }
 
             return url;
         };
@@ -82,7 +86,12 @@ requirejs(
          * Render the view for a given location.
          */
         var renderLocationView = function(map, ctx, next) {
-            map.setView([ctx.params.lat, ctx.params.lon], 14);
+            // If we're going to be changing zoom levels as part of rendering
+            // this page, make sure that we don't mistake the 'zoomend' event
+            // for a user-initiated action. Instead, we should just ignore it.
+            ignoreZoomEvent = map.getZoom() != ctx.params.zoom;
+
+            map.setView([ctx.params.lat, ctx.params.lon], ctx.params.zoom);
         };
 
         /*
@@ -91,7 +100,7 @@ requirejs(
         var updatePageHistory = function(map) {
             var loc = map.getCenter();
             page.show(
-                getPageLocationURL(loc.lat, loc.lng),
+                getPageLocationURL(loc.lat, loc.lng, map.getZoom()),
                 undefined,
                 false);
         };
@@ -121,14 +130,23 @@ requirejs(
              */
             map.on('dragend', updatePageHistory.bind(null, map));
 
+            map.on('zoomend', function() {
+                if (!ignoreZoomEvent) {
+                    updatePageHistory(map);
+                }
+
+                // Begin paying attention to zoom events again
+                ignoreZoomEvent = false;
+            });
+
             $('#gobutton').click(function() {
                 goToAddress(map, $('#address').val());
             });
 
-            page('/v1/:lat/:lon', renderLocationView.bind(null, map));
+            page('/v1/:lat/:lon/:zoom', renderLocationView.bind(null, map));
 
             // By default, go an area that is known to have good data
-            page.redirect('', getPageLocationURL(32.7875509, -96.8164836));
+            page.redirect('', getPageLocationURL(32.7875509, -96.8164836, 14));
 
             page.start({hashbang: true});
         });
