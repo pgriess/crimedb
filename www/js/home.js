@@ -127,9 +127,8 @@ requirejs(
 
             page('/v1/:lat/:lon', renderLocationView.bind(null, map));
 
-            // By default, go an area of St. Louis, MO that is known to have
-            // good data
-            page.redirect('', getPageLocationURL(38.638641, -90.283651));
+            // By default, go an area that is known to have good data
+            page.redirect('', getPageLocationURL(32.7875509, -96.8164836));
 
             page.start({hashbang: true});
         });
