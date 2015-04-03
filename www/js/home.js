@@ -42,6 +42,22 @@ requirejs(
         var geocoder = new gmaps.Geocoder();
         var marker = null;
 
+        /*
+         * Return a URL string for the given location.
+         */
+        var getPageLocationURL = function(lat, lon, zoom) {
+            var url = '/v1/' + lat.toFixed(4) + '/' + lon.toFixed(4);
+            if (zoom !== undefined) {
+                url += '/' + zoom;
+            }
+
+            return url;
+        };
+
+        /*
+         * Geocode the given address and update the map / history if we find
+         * anything.
+         */
         var goToAddress = function(map, address) {
             if (ga) {
                 ga('send', 'event', 'map', 'go');
@@ -60,16 +76,27 @@ requirejs(
                     marker = L.marker(latLng);
                     map.addLayer(marker);
 
-                    page.show('/v1/' + loc.lat() + '/' + loc.lng());
+                    page.show(getPageLocationURL(loc.lat(), loc.lng(), 14));
                 }
             });
         };
 
         /*
-         * Render the page based on the parameters from the URL.
+         * Render the view for a given location.
          */
-        var renderPage = function(map, ctx, next) {
-            map.setView([ctx.params.lat, ctx.params.lon], 14);
+        var renderLocationView = function(map, ctx, next) {
+            map.setView([ctx.params.lat, ctx.params.lon], ctx.params.zoom);
+        };
+
+        /*
+         * Update the URL / history based on the contents of the page.
+         */
+        var updatePageHistory = function(map) {
+            var loc = map.getCenter();
+            page.show(
+                getPageLocationURL(loc.lat, loc.lng, map.getZoom()),
+                undefined,
+                false);
         };
 
         $(document).ready(function() {
@@ -95,20 +122,17 @@ requirejs(
              * dispatch because the page already reflects the state of the new
              * location; no need to re-render it.
              */
-            map.on('dragend', function(e) {
-                var latLng = map.getCenter();
-                page.show('/v1/' + latLng.lat + '/' + latLng.lng, undefined, false);
-            });
+            map.on('dragend', updatePageHistory.bind(null, map));
 
             $('#gobutton').click(function() {
                 goToAddress(map, $('#address').val());
             });
 
-            page('/v1/:lat/:lon', renderPage.bind(null, map));
+            page('/v1/:lat/:lon/:zoom', renderLocationView.bind(null, map));
 
             // By default, go an area of St. Louis, MO that is known to have
             // good data
-            page.redirect('', '/v1/38.638641/-90.283651');
+            page.redirect('', getPageLocationURL(38.638641, -90.283651, 14));
 
             // XXX: Need to represent zoom in our URL scheme
             // XXX: Need to add marker placement in URL scheme
