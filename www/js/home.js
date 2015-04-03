@@ -45,11 +45,8 @@ requirejs(
         /*
          * Return a URL string for the given location.
          */
-        var getPageLocationURL = function(lat, lon, zoom) {
+        var getPageLocationURL = function(lat, lon) {
             var url = '/v1/' + lat.toFixed(4) + '/' + lon.toFixed(4);
-            if (zoom !== undefined) {
-                url += '/' + zoom;
-            }
 
             return url;
         };
@@ -85,7 +82,7 @@ requirejs(
          * Render the view for a given location.
          */
         var renderLocationView = function(map, ctx, next) {
-            map.setView([ctx.params.lat, ctx.params.lon], ctx.params.zoom);
+            map.setView([ctx.params.lat, ctx.params.lon], 14);
         };
 
         /*
@@ -94,7 +91,7 @@ requirejs(
         var updatePageHistory = function(map) {
             var loc = map.getCenter();
             page.show(
-                getPageLocationURL(loc.lat, loc.lng, map.getZoom()),
+                getPageLocationURL(loc.lat, loc.lng),
                 undefined,
                 false);
         };
@@ -128,11 +125,11 @@ requirejs(
                 goToAddress(map, $('#address').val());
             });
 
-            page('/v1/:lat/:lon/:zoom', renderLocationView.bind(null, map));
+            page('/v1/:lat/:lon', renderLocationView.bind(null, map));
 
             // By default, go an area of St. Louis, MO that is known to have
             // good data
-            page.redirect('', getPageLocationURL(38.638641, -90.283651, 14));
+            page.redirect('', getPageLocationURL(38.638641, -90.283651));
 
             // XXX: Need to represent zoom in our URL scheme
             // XXX: Need to add marker placement in URL scheme
