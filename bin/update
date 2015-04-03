@@ -99,7 +99,7 @@ if [[ -n "$optRender" ]] ; then
     printf "[%s] Beginning render\n" "$(date)"
     $CRIMEDB_ROOT/bin/render -vvvv \
         --time-from=$(date --date='January 1 2014' +'%s') \
-        --time-to=$(date --date='January 1 2015' +'%s') \
+        --time-to=$(date --date='April 1 2015' +'%s') \
         $CRIMEDB_ROOT/root/data $CRIMEDB_ROOT/www $CRIMEDB_ROOT/root/www
     printf "[%s] Finished render\n" "$(date)"
 fi
