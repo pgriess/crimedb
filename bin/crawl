@@ -68,7 +68,6 @@ def cmd_download(args, regions):
 def cmd_process(args, regions):
     for region_name, region in regions.items():
         logging.info('processing data from region {}'.format(region_name))
-
         region.process()
 
 
