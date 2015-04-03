@@ -32,6 +32,7 @@ import pyproj
 import pytz
 import re
 import shapely.geometry
+import shutil
 import urllib.request, urllib.parse
 
 
@@ -59,8 +60,12 @@ class Region(crimedb.regions.base.Region):
         self._download_raw_files()
 
     def process(self):
-        for fn in os.listdir(self._cache_dir()):
+        # Since we are just blindly appending all incidents to the data
+        # files (even if we've seen then before), clean everything up 
+        # before processing so that we don't have duplicates.
+        shutil.rmtree(self._intermediate_dir());
 
+        for fn in os.listdir(self._cache_dir()):
             self._process_raw_file(os.path.join(self._cache_dir(), fn))
 
     def crimes(self):

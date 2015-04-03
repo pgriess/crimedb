@@ -27,6 +27,7 @@ import os.path
 import pyproj
 import pytz
 import shapely.geometry
+import shutil
 
 
 _SOCRATA_HOSTNAME = 'www.dallasopendata.com'
@@ -63,6 +64,12 @@ class Region(crimedb.regions.base.Region):
         with open(self._incidents_path(), 'at', encoding='utf-8') as f:
             for cr in crimedb.socrata.dataset_rows(
                     _SOCRATA_HOSTNAME, _SOCRATA_DATASET):
+                if 'servicenum' not in cr:
+                    _LOGGER.warning(
+                            ("crime does not contain a 'servicenum' field; "
+                             "skipping"))
+                    continue
+
                 if cr['servicenum'] in gids:
                     continue
 
@@ -71,6 +78,11 @@ class Region(crimedb.regions.base.Region):
     def process(self):
         if not os.path.exists(self._incidents_path()):
             return
+
+        # Since we are just blindly appending all incidents to the data
+        # files (even if we've seen then before), clean everything up 
+        # before processing so that we don't have duplicates.
+        shutil.rmtree(self._intermediate_dir());
 
         with open(self._incidents_path(), 'rt', encoding='utf-8') as f:
             for cr in map(json.loads, f):

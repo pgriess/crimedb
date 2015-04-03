@@ -47,6 +47,7 @@ import os.path
 import pyproj
 import pytz
 import shapely.geometry
+import shutil
 import urllib.parse
 import urllib.request
 
@@ -118,6 +119,11 @@ class Region(crimedb.regions.base.Region):
     def process(self):
         if not os.path.exists(self._incidents_path()):
             return
+
+        # Since we are just blindly appending all incidents to the data
+        # files (even if we've seen then before), clean everything up 
+        # before processing so that we don't have duplicates.
+        shutil.rmtree(self._intermediate_dir());
 
         with open(self._incidents_path(), 'rt', encoding='utf-8') as f:
             for l in f:
