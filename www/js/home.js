@@ -98,7 +98,7 @@ requirejs(
 
         $(document).ready(function() {
             if (ga) {
-                ga('create', 'UA-18586119-3', 'crimedb.org');
+                ga('create', 'UA-18586119-3', 'auto');
                 ga('send', 'pageview');
             }
 
