@@ -131,12 +131,6 @@ requirejs(
             // good data
             page.redirect('', getPageLocationURL(38.638641, -90.283651));
 
-            // XXX: Need to represent zoom in our URL scheme
-            // XXX: Need to add marker placement in URL scheme
-            // XXX: Doing ^^^ w/ path parameters rather than optional query params is nasty
-            // XXX: Pull in the polyfill that page.js references since page.js
-            //      requires support of the HTML5 history api
-
             page.start({hashbang: true});
         });
     }
